@@ -21,6 +21,7 @@ interface TimelineProps {
   onMoveStop: (stopId: string, direction: 'up' | 'down') => void;
   onStartAddStop: () => void;
   onCancelAddStop: () => void;
+  currencySymbol: string;
 }
 
 function fmtDuration(m: number): string {
@@ -48,27 +49,31 @@ export default function Timeline({
   onMoveStop,
   onStartAddStop,
   onCancelAddStop,
+  currencySymbol,
 }: TimelineProps) {
   const expandedRef = useRef<HTMLDivElement>(null);
   const newStopRef = useRef<HTMLDivElement>(null);
 
+  function scrollToCard(el: HTMLElement) {
+    const container = el.closest('.timeline-scroll') as HTMLElement | null;
+    if (!container) return;
+    const containerRect = container.getBoundingClientRect();
+    const elRect = el.getBoundingClientRect();
+    const offset = elRect.top - containerRect.top + container.scrollTop;
+    container.scrollTo({ top: offset - 12, behavior: 'smooth' });
+  }
+
   useEffect(() => {
     if (expandedStopId && expandedRef.current) {
-      // Scroll with offset so the card doesn't slam into the top edge
-      const el = expandedRef.current;
-      const container = el.closest('.timeline-scroll');
-      if (container) {
-        const elTop = el.offsetTop - container.getBoundingClientRect().top;
-        container.scrollTo({ top: el.offsetTop - 12, behavior: 'smooth' });
-      } else {
-        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      }
+      scrollToCard(expandedRef.current);
     }
   }, [expandedStopId]);
 
   useEffect(() => {
     if (isAddingNew && newStopRef.current) {
-      newStopRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      requestAnimationFrame(() => {
+        if (newStopRef.current) scrollToCard(newStopRef.current);
+      });
     }
   }, [isAddingNew]);
 
@@ -102,7 +107,7 @@ export default function Timeline({
   }
 
   return (
-    <div className="p-3">
+    <div className="p-3 pb-[8vh]">
       {/* Trip summary card */}
       {stops.length > 0 && (
         <div className="bg-white border border-neutral-200 rounded-[10px] px-3.5 py-2.5 mb-3 flex items-center justify-between">
@@ -124,7 +129,7 @@ export default function Timeline({
             <div>
               <p className="text-[9px] uppercase tracking-[1.2px] text-neutral-400">Cost</p>
               <p className="text-[13px] font-data font-medium text-neutral-900">
-                {summary.totalCost > 0 ? `¥${summary.totalCost.toLocaleString()}` : '--'}
+                {summary.totalCost > 0 ? `${currencySymbol}${summary.totalCost.toLocaleString()}` : '--'}
               </p>
             </div>
           </div>
@@ -154,6 +159,7 @@ export default function Timeline({
               onDelete={() => onDeleteStop(stop.id)}
               onMove={(dir) => onMoveStop(stop.id, dir)}
               onCancel={() => onToggleExpand(stop.id)}
+              currencySymbol={currencySymbol}
             />
             {seg && <TransportSegmentCard segment={seg} onEdit={onTransportEdit} />}
           </div>
@@ -173,6 +179,7 @@ export default function Timeline({
             onDelete={() => {}}
             onMove={() => {}}
             onCancel={onCancelAddStop}
+            currencySymbol={currencySymbol}
           />
         </div>
       )}

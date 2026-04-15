@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect, useRef, FormEvent } from 'react';
-import type { Stop, Activity, Accommodation, StopCategory } from '@/lib/types';
-import { CATEGORY_CONFIG, stopTotal } from '@/lib/types';
+import type { Stop, Activity, Accommodation } from '@/lib/types';
+import { stopTotal } from '@/lib/types';
+
 
 interface StopCardProps {
   stop: Stop | null;
@@ -14,6 +15,7 @@ interface StopCardProps {
   onDelete: () => void;
   onMove: (direction: 'up' | 'down') => void;
   onCancel: () => void;
+  currencySymbol: string;
 }
 
 interface GeoResult {
@@ -23,11 +25,6 @@ interface GeoResult {
   lng: number;
   type: string;
 }
-
-const CATEGORIES: StopCategory[] = [
-  'temple', 'shrine', 'museum', 'park', 'food', 'shopping',
-  'onsen', 'entertainment', 'nature', 'accommodation', 'transport-hub', 'other',
-];
 
 function formatDuration(m: number): string {
   if (m <= 0) return '';
@@ -63,6 +60,7 @@ function CompactDisplay({
   onSave,
   onDelete,
   onMove,
+  currencySymbol,
 }: {
   stop: Stop;
   index: number;
@@ -71,8 +69,8 @@ function CompactDisplay({
   onSave: (stop: Stop) => void;
   onDelete: () => void;
   onMove: (direction: 'up' | 'down') => void;
+  currencySymbol: string;
 }) {
-  const config = CATEGORY_CONFIG[stop.category] || CATEGORY_CONFIG.other;
   const accoms: Accommodation[] = stop.accommodations || [];
   const acts: Activity[] = stop.activities || [];
   const dur = stop.durationMinutes || 0;
@@ -104,7 +102,6 @@ function CompactDisplay({
   }
 
   const meta = [
-    config.label,
     stop.date ? formatDate(stop.date) : '',
     stop.arrivalTime ? `${stop.arrivalTime}\u2009\u2014\u2009${stop.departureTime || ''}` : '',
     dur > 0 ? formatDuration(dur) : '',
@@ -144,7 +141,7 @@ function CompactDisplay({
 
       {/* Entry cost */}
       {stop.costJPY > 0 && (
-        <p className="text-[11px] font-data text-neutral-600 mt-0.5">Entry ¥{stop.costJPY.toLocaleString()}</p>
+        <p className="text-[11px] font-data text-neutral-600 mt-0.5">Entry {currencySymbol}{stop.costJPY.toLocaleString()}</p>
       )}
 
       {/* Stays */}
@@ -155,7 +152,7 @@ function CompactDisplay({
             <div key={a.id} className="flex items-center justify-between py-px">
               <span className="text-[12px] text-neutral-800 truncate">{a.name}</span>
               <div className="flex items-center gap-1.5 shrink-0">
-                <span className="text-[11px] font-data text-neutral-500">¥{a.costJPY.toLocaleString()}</span>
+                <span className="text-[11px] font-data text-neutral-500">{currencySymbol}{a.costJPY.toLocaleString()}</span>
                 <button onClick={e => { e.stopPropagation(); onSave({ ...stop, accommodations: accoms.filter(x => x.id !== a.id) }); }} className="text-neutral-300 hover:text-red-500 text-[13px] leading-none transition-colors duration-150">&times;</button>
               </div>
             </div>
@@ -163,7 +160,7 @@ function CompactDisplay({
           {addingAccom ? (
             <div className="flex items-center gap-1 mt-1">
               <input type="text" value={accomName} onChange={e => setAccomName(e.target.value)} placeholder="Name" className={inlineInput} autoFocus onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); saveAccom(); } }} />
-              <span className="text-[11px] text-neutral-400">¥</span>
+              <span className="text-[11px] text-neutral-400">{currencySymbol}</span>
               <input type="number" value={accomCost} onChange={e => setAccomCost(parseInt(e.target.value) || 0)} min={0} className={costInput} />
               <button onClick={e => { e.stopPropagation(); saveAccom(); }} className="text-neutral-500 hover:text-neutral-900 text-[13px] px-0.5 transition-colors duration-150">&#10003;</button>
               <button onClick={e => { e.stopPropagation(); setAddingAccom(false); setAccomName(''); setAccomCost(0); }} className="text-neutral-400 hover:text-neutral-600 text-[13px] px-0.5 transition-colors duration-150">&times;</button>
@@ -185,7 +182,7 @@ function CompactDisplay({
             <div key={a.id} className="flex items-center justify-between py-px">
               <span className="text-[12px] text-neutral-800 truncate">{a.name}</span>
               <div className="flex items-center gap-1.5 shrink-0">
-                <span className="text-[11px] font-data text-neutral-500">¥{a.costJPY.toLocaleString()}</span>
+                <span className="text-[11px] font-data text-neutral-500">{currencySymbol}{a.costJPY.toLocaleString()}</span>
                 <button onClick={e => { e.stopPropagation(); onSave({ ...stop, activities: acts.filter(x => x.id !== a.id) }); }} className="text-neutral-300 hover:text-red-500 text-[13px] leading-none transition-colors duration-150">&times;</button>
               </div>
             </div>
@@ -193,7 +190,7 @@ function CompactDisplay({
           {addingAct ? (
             <div className="flex items-center gap-1 mt-1">
               <input type="text" value={actName} onChange={e => setActName(e.target.value)} placeholder="Name" className={inlineInput} autoFocus onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); saveAct(); } }} />
-              <span className="text-[11px] text-neutral-400">¥</span>
+              <span className="text-[11px] text-neutral-400">{currencySymbol}</span>
               <input type="number" value={actCost} onChange={e => setActCost(parseInt(e.target.value) || 0)} min={0} className={costInput} />
               <button onClick={e => { e.stopPropagation(); saveAct(); }} className="text-neutral-500 hover:text-neutral-900 text-[13px] px-0.5 transition-colors duration-150">&#10003;</button>
               <button onClick={e => { e.stopPropagation(); setAddingAct(false); setActName(''); setActCost(0); }} className="text-neutral-400 hover:text-neutral-600 text-[13px] px-0.5 transition-colors duration-150">&times;</button>
@@ -213,7 +210,7 @@ function CompactDisplay({
       {/* Total */}
       {cost > 0 && (
         <div className="border-t border-neutral-100 pt-1.5 mt-2 flex justify-end">
-          <span className="text-[11px] font-data font-medium text-neutral-900">Total ¥{cost.toLocaleString()}</span>
+          <span className="text-[11px] font-data font-medium text-neutral-900">Total {currencySymbol}{cost.toLocaleString()}</span>
         </div>
       )}
     </>
@@ -230,6 +227,7 @@ function ExpandedForm({
   onSave,
   onCancel,
   autoFocusSearch,
+  currencySymbol,
 }: {
   stop: Stop | null;
   index: number;
@@ -238,6 +236,7 @@ function ExpandedForm({
   onSave: (stop: Stop) => void;
   onCancel: () => void;
   autoFocusSearch: boolean;
+  currencySymbol: string;
 }) {
   const isNew = stop === null;
 
@@ -247,7 +246,6 @@ function ExpandedForm({
   const [showResults, setShowResults] = useState(false);
 
   const [name, setName] = useState(stop?.name || '');
-  const [category, setCategory] = useState<StopCategory>(stop?.category || 'other');
   const [lat, setLat] = useState<number | null>(stop?.lat ?? null);
   const [lng, setLng] = useState<number | null>(stop?.lng ?? null);
   const [date, setDate] = useState(stop?.date || '');
@@ -351,7 +349,6 @@ function ExpandedForm({
       id: stop?.id || crypto.randomUUID(),
       name: name.trim(),
       description: stop?.description || '',
-      category,
       lat,
       lng,
       date,
@@ -444,25 +441,6 @@ function ExpandedForm({
           />
         </div>
 
-        {/* Category */}
-        <div>
-          <label className={labelClass}>Category</label>
-          <select
-            value={category}
-            onChange={e => setCategory(e.target.value as StopCategory)}
-            className={inputClass}
-          >
-            {CATEGORIES.map(cat => {
-              const cfg = CATEGORY_CONFIG[cat];
-              return (
-                <option key={cat} value={cat}>
-                  {cfg.letter} — {cfg.label}
-                </option>
-              );
-            })}
-          </select>
-        </div>
-
         {/* Date */}
         <div>
           <label className={labelClass}>Date</label>
@@ -498,7 +476,7 @@ function ExpandedForm({
 
         {/* Entry Cost */}
         <div>
-          <label className={labelClass}>Entry Cost (¥)</label>
+          <label className={labelClass}>Entry Cost ({currencySymbol})</label>
           <input
             type="number"
             value={costJPY}
@@ -515,7 +493,7 @@ function ExpandedForm({
             <div key={accom.id} className="flex items-center justify-between py-1">
               <span className="text-[12px] text-neutral-800 truncate">{accom.name}</span>
               <div className="flex items-center gap-1.5 shrink-0">
-                <span className="text-[11px] font-data text-neutral-500">¥{accom.costJPY.toLocaleString()}</span>
+                <span className="text-[11px] font-data text-neutral-500">{currencySymbol}{accom.costJPY.toLocaleString()}</span>
                 <button type="button" onClick={() => handleRemoveAccom(accom.id)} className="text-neutral-400 hover:text-red-500 text-[13px] leading-none transition-colors duration-150">&times;</button>
               </div>
             </div>
@@ -531,7 +509,7 @@ function ExpandedForm({
                 autoFocus
                 onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddAccom(); } }}
               />
-              <span className="text-[11px] text-neutral-400">¥</span>
+              <span className="text-[11px] text-neutral-400">{currencySymbol}</span>
               <input
                 type="number"
                 value={newAccomCost}
@@ -554,7 +532,7 @@ function ExpandedForm({
             <div key={act.id} className="flex items-center justify-between py-1">
               <span className="text-[12px] text-neutral-800 truncate">{act.name}</span>
               <div className="flex items-center gap-1.5 shrink-0">
-                <span className="text-[11px] font-data text-neutral-500">¥{act.costJPY.toLocaleString()}</span>
+                <span className="text-[11px] font-data text-neutral-500">{currencySymbol}{act.costJPY.toLocaleString()}</span>
                 <button type="button" onClick={() => handleRemoveActivity(act.id)} className="text-neutral-400 hover:text-red-500 text-[13px] leading-none transition-colors duration-150">&times;</button>
               </div>
             </div>
@@ -570,7 +548,7 @@ function ExpandedForm({
                 autoFocus
                 onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddActivity(); } }}
               />
-              <span className="text-[11px] text-neutral-400">¥</span>
+              <span className="text-[11px] text-neutral-400">{currencySymbol}</span>
               <input
                 type="number"
                 value={newActivityCost}
@@ -640,6 +618,7 @@ export default function StopCard({
   onDelete,
   onMove,
   onCancel,
+  currencySymbol,
 }: StopCardProps) {
   return (
     <div
@@ -660,6 +639,7 @@ export default function StopCard({
           onSave={onSave}
           onCancel={stop === null ? onCancel : onToggleExpand}
           autoFocusSearch={stop === null}
+          currencySymbol={currencySymbol}
         />
       ) : (
         <CompactDisplay
@@ -670,6 +650,7 @@ export default function StopCard({
           onSave={onSave}
           onDelete={onDelete}
           onMove={onMove}
+          currencySymbol={currencySymbol}
         />
       )}
     </div>

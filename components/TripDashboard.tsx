@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useCallback, FormEvent } from 'react';
 import dynamic from 'next/dynamic';
 import type { Trip, Stop, TransportSegment } from '@/lib/types';
 import { generatePrintHTML } from '@/lib/export-pdf';
+import { CURRENCIES } from '@/lib/types';
 import Timeline from './Timeline';
 
 const Map = dynamic(() => import('./MapInner'), {
@@ -42,12 +43,15 @@ export default function TripDashboard() {
   const [expandedStopId, setExpandedStopId] = useState<string | null>(null);
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [routesLoading, setRoutesLoading] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   const [createTitle, setCreateTitle] = useState('');
   const [createStartDate, setCreateStartDate] = useState('');
   const [createEndDate, setCreateEndDate] = useState('');
   const [createMemberName, setCreateMemberName] = useState('');
   const [creating, setCreating] = useState(false);
+
+  const currencySymbol = trip?.settings?.currencySymbol || '\u00A5';
 
   const fetchTrip = useCallback(async () => {
     try {
@@ -340,14 +344,14 @@ export default function TripDashboard() {
   const exportPDF = useCallback(() => {
     if (!trip) return;
     const dateRange = formatDateRange(trip.startDate, trip.endDate);
-    const html = generatePrintHTML(sortedStops, trip.transportSegments, trip.title, dateRange);
+    const html = generatePrintHTML(sortedStops, trip.transportSegments, trip.title, dateRange, currencySymbol);
     const win = window.open('', '_blank');
     if (win) {
       win.document.write(html);
       win.document.close();
       setTimeout(() => win.print(), 300);
     }
-  }, [trip, sortedStops]);
+  }, [trip, sortedStops, currencySymbol]);
 
   const openInGoogleMaps = useCallback(() => {
     if (sortedStops.length === 0) return;
@@ -563,8 +567,84 @@ export default function TripDashboard() {
           >
             JSON
           </button>
+          <button
+            onClick={() => setShowSettings(!showSettings)}
+            className="w-[30px] h-[30px] border border-neutral-200 hover:border-neutral-300 rounded-lg flex items-center justify-center text-neutral-500 hover:text-neutral-900 transition-all duration-150"
+            title="Settings"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+            </svg>
+          </button>
         </div>
       </header>
+
+      {showSettings && (
+        <div className="bg-white border-b border-neutral-200 px-5 py-4 expand-content">
+          <div className="max-w-md space-y-3">
+            <p className="text-[10px] uppercase tracking-[1.2px] text-neutral-400 mb-2">Settings</p>
+
+            {/* Currency */}
+            <div className="flex items-center justify-between">
+              <label className="text-[12px] text-neutral-600">Currency</label>
+              <select
+                value={trip.settings?.currency || 'JPY'}
+                onChange={(e) => {
+                  const curr = CURRENCIES.find(c => c.code === e.target.value);
+                  if (curr && trip) {
+                    saveTrip({
+                      ...trip,
+                      settings: { currency: curr.code, currencySymbol: curr.symbol },
+                    });
+                  }
+                }}
+                className="px-2.5 py-1.5 bg-neutral-50 border border-neutral-200 rounded-lg text-[12px] text-neutral-900 focus:outline-none focus:border-neutral-400 transition-[border-color] duration-150"
+              >
+                {CURRENCIES.map(c => (
+                  <option key={c.code} value={c.code}>{c.symbol} {c.code} — {c.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Trip Title */}
+            <div className="flex items-center justify-between">
+              <label className="text-[12px] text-neutral-600">Trip Title</label>
+              <input
+                type="text"
+                value={trip.title}
+                onChange={(e) => {
+                  if (trip) saveTrip({ ...trip, title: e.target.value });
+                }}
+                className="px-2.5 py-1.5 bg-neutral-50 border border-neutral-200 rounded-lg text-[12px] text-neutral-900 focus:outline-none focus:border-neutral-400 transition-[border-color] duration-150 w-48"
+              />
+            </div>
+
+            {/* Trip Dates */}
+            <div className="flex items-center justify-between gap-3">
+              <label className="text-[12px] text-neutral-600">Dates</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={trip.startDate}
+                  onChange={(e) => {
+                    if (trip) saveTrip({ ...trip, startDate: e.target.value });
+                  }}
+                  className="px-2.5 py-1.5 bg-neutral-50 border border-neutral-200 rounded-lg text-[12px] text-neutral-900 focus:outline-none focus:border-neutral-400 transition-[border-color] duration-150"
+                />
+                <span className="text-neutral-400 text-[12px]">to</span>
+                <input
+                  type="date"
+                  value={trip.endDate}
+                  onChange={(e) => {
+                    if (trip) saveTrip({ ...trip, endDate: e.target.value });
+                  }}
+                  className="px-2.5 py-1.5 bg-neutral-50 border border-neutral-200 rounded-lg text-[12px] text-neutral-900 focus:outline-none focus:border-neutral-400 transition-[border-color] duration-150"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main split */}
       <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
@@ -598,6 +678,7 @@ export default function TripDashboard() {
             onMoveStop={moveStop}
             onStartAddStop={startAddStop}
             onCancelAddStop={cancelAddStop}
+            currencySymbol={currencySymbol}
           />
         </div>
       </div>

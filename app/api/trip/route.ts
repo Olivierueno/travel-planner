@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTrip, saveTrip } from '@/lib/storage';
 import type { Trip } from '@/lib/types';
+import { DEFAULT_SETTINGS } from '@/lib/types';
 
 export async function GET() {
   const trip = await getTrip();
@@ -49,6 +50,7 @@ export async function POST(request: NextRequest) {
         timestamp: new Date().toISOString(),
       },
     ],
+    settings: DEFAULT_SETTINGS,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };

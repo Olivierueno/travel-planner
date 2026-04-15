@@ -1,3 +1,25 @@
+export interface TripSettings {
+  currency: string;
+  currencySymbol: string;
+}
+
+export const CURRENCIES: { code: string; symbol: string; label: string }[] = [
+  { code: 'JPY', symbol: '\u00A5', label: 'Japanese Yen' },
+  { code: 'USD', symbol: '$', label: 'US Dollar' },
+  { code: 'AUD', symbol: 'A$', label: 'Australian Dollar' },
+  { code: 'EUR', symbol: '\u20AC', label: 'Euro' },
+  { code: 'GBP', symbol: '\u00A3', label: 'British Pound' },
+  { code: 'KHR', symbol: '\u17DB', label: 'Cambodian Riel' },
+  { code: 'THB', symbol: '\u0E3F', label: 'Thai Baht' },
+  { code: 'SGD', symbol: 'S$', label: 'Singapore Dollar' },
+  { code: 'KRW', symbol: '\u20A9', label: 'Korean Won' },
+];
+
+export const DEFAULT_SETTINGS: TripSettings = {
+  currency: 'JPY',
+  currencySymbol: '\u00A5',
+};
+
 export interface Trip {
   id: string;
   title: string;
@@ -8,6 +30,7 @@ export interface Trip {
   stops: Stop[];
   transportSegments: TransportSegment[];
   changelog: ChangelogEntry[];
+  settings: TripSettings;
   createdAt: string;
   updatedAt: string;
 }
@@ -22,7 +45,6 @@ export interface Stop {
   id: string;
   name: string;
   description: string;
-  category: StopCategory;
   lat: number;
   lng: number;
   date: string;
@@ -37,20 +59,6 @@ export interface Stop {
   addedBy: string;
   createdAt: string;
 }
-
-export type StopCategory =
-  | 'temple'
-  | 'shrine'
-  | 'museum'
-  | 'park'
-  | 'food'
-  | 'shopping'
-  | 'onsen'
-  | 'entertainment'
-  | 'nature'
-  | 'accommodation'
-  | 'transport-hub'
-  | 'other';
 
 export interface Activity {
   id: string;
@@ -83,24 +91,6 @@ export interface ChangelogEntry {
   member: string;
   timestamp: string;
 }
-
-export const CATEGORY_CONFIG: Record<
-  StopCategory,
-  { label: string; letter: string; color: string }
-> = {
-  temple: { label: 'Temple', letter: 'T', color: '#dc2626' },
-  shrine: { label: 'Shrine', letter: 'S', color: '#ea580c' },
-  museum: { label: 'Museum', letter: 'M', color: '#7c3aed' },
-  park: { label: 'Park', letter: 'P', color: '#16a34a' },
-  food: { label: 'Food', letter: 'F', color: '#e11d48' },
-  shopping: { label: 'Shopping', letter: '$', color: '#db2777' },
-  onsen: { label: 'Onsen', letter: 'O', color: '#0891b2' },
-  entertainment: { label: 'Entertainment', letter: 'E', color: '#9333ea' },
-  nature: { label: 'Nature', letter: 'N', color: '#059669' },
-  accommodation: { label: 'Accommodation', letter: 'A', color: '#2563eb' },
-  'transport-hub': { label: 'Transport', letter: 'H', color: '#4f46e5' },
-  other: { label: 'Other', letter: '\u00B7', color: '#6b7280' },
-};
 
 export const TRANSPORT_CONFIG: Record<TransportMode, { label: string }> = {
   car: { label: 'Car' },

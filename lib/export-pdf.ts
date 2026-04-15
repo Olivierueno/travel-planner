@@ -1,5 +1,5 @@
 import type { Stop, TransportSegment } from './types';
-import { CATEGORY_CONFIG, TRANSPORT_CONFIG, stopTotal } from './types';
+import { TRANSPORT_CONFIG, stopTotal } from './types';
 
 function fmtDuration(m: number): string {
   if (!m || m <= 0) return '';
@@ -23,12 +23,12 @@ export function generatePrintHTML(
   stops: Stop[],
   segments: TransportSegment[],
   title: string,
-  dateRange: string
+  dateRange: string,
+  currencySymbol: string
 ): string {
   let grandTotal = 0;
 
   const stopsHTML = stops.map((stop, i) => {
-    const config = CATEGORY_CONFIG[stop.category] || CATEGORY_CONFIG.other;
     const total = stopTotal(stop);
     grandTotal += total;
     const accoms = stop.accommodations || [];
@@ -45,16 +45,16 @@ export function generatePrintHTML(
           <div class="stop-info">
             <div class="stop-name">${stop.name}</div>
             <div class="stop-meta">
-              ${config.label}${stop.date ? ` &middot; ${fmtDate(stop.date)}` : ''}${stop.arrivalTime ? ` &middot; ${stop.arrivalTime} — ${stop.departureTime || ''}` : ''}${stop.durationMinutes > 0 ? ` &middot; ${fmtDuration(stop.durationMinutes)}` : ''}
+              ${stop.date ? fmtDate(stop.date) : ''}${stop.arrivalTime ? `${stop.date ? ' &middot; ' : ''}${stop.arrivalTime} — ${stop.departureTime || ''}` : ''}${stop.durationMinutes > 0 ? ` &middot; ${fmtDuration(stop.durationMinutes)}` : ''}
             </div>
           </div>
-          ${total > 0 ? `<div class="stop-cost">&yen;${total.toLocaleString()}</div>` : ''}
+          ${total > 0 ? `<div class="stop-cost">${currencySymbol}${total.toLocaleString()}</div>` : ''}
         </div>`;
 
     if (accoms.length > 0) {
       html += `<div class="section"><div class="section-label">Stays</div>`;
       accoms.forEach(a => {
-        html += `<div class="item"><span>${a.name}</span><span class="item-cost">&yen;${a.costJPY.toLocaleString()}</span></div>`;
+        html += `<div class="item"><span>${a.name}</span><span class="item-cost">${currencySymbol}${a.costJPY.toLocaleString()}</span></div>`;
       });
       html += `</div>`;
     }
@@ -62,7 +62,7 @@ export function generatePrintHTML(
     if (acts.length > 0) {
       html += `<div class="section"><div class="section-label">Activities</div>`;
       acts.forEach(a => {
-        html += `<div class="item"><span>${a.name}</span><span class="item-cost">&yen;${a.costJPY.toLocaleString()}</span></div>`;
+        html += `<div class="item"><span>${a.name}</span><span class="item-cost">${currencySymbol}${a.costJPY.toLocaleString()}</span></div>`;
       });
       html += `</div>`;
     }
@@ -118,7 +118,7 @@ export function generatePrintHTML(
   <div class="subtitle">${dateRange} &middot; ${stops.length} stop${stops.length !== 1 ? 's' : ''}</div>
   <div class="summary">Trip itinerary</div>
   ${stopsHTML}
-  ${grandTotal > 0 ? `<div class="grand-total"><span>Trip Total</span><span class="amount">&yen;${grandTotal.toLocaleString()}</span></div>` : ''}
+  ${grandTotal > 0 ? `<div class="grand-total"><span>Trip Total</span><span class="amount">${currencySymbol}${grandTotal.toLocaleString()}</span></div>` : ''}
 </body>
 </html>`;
 }
