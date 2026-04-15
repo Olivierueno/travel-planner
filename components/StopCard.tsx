@@ -645,10 +645,10 @@ export default function StopCard({
     <div
       className={`bg-white border rounded-[10px] transition-all duration-300 ${
         isExpanded
-          ? 'border-neutral-900 shadow-sm px-4 py-4'
+          ? 'border-neutral-900 shadow-sm p-4'
           : stop
             ? 'border-neutral-200 hover:border-neutral-300 px-3.5 py-3'
-            : 'border-neutral-900 shadow-sm px-4 py-4'
+            : 'border-neutral-900 shadow-sm p-4'
       }`}
     >
       {isExpanded || stop === null ? (

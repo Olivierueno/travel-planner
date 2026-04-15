@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 import type { Stop, TransportSegment } from '@/lib/types';
+import { stopTotal } from '@/lib/types';
 import StopCard from './StopCard';
 import TransportSegmentCard from './TransportSegment';
 
@@ -20,6 +21,16 @@ interface TimelineProps {
   onMoveStop: (stopId: string, direction: 'up' | 'down') => void;
   onStartAddStop: () => void;
   onCancelAddStop: () => void;
+}
+
+function fmtDuration(m: number): string {
+  if (!m || m <= 0) return '0m';
+  if (m >= 60) {
+    const h = Math.floor(m / 60);
+    const r = m % 60;
+    return r > 0 ? `${h}h ${r}m` : `${h}h`;
+  }
+  return `${m}m`;
 }
 
 export default function Timeline({
@@ -43,15 +54,31 @@ export default function Timeline({
 
   useEffect(() => {
     if (expandedStopId && expandedRef.current) {
-      expandedRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // Scroll with offset so the card doesn't slam into the top edge
+      const el = expandedRef.current;
+      const container = el.closest('.timeline-scroll');
+      if (container) {
+        const elTop = el.offsetTop - container.getBoundingClientRect().top;
+        container.scrollTo({ top: el.offsetTop - 12, behavior: 'smooth' });
+      } else {
+        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
     }
   }, [expandedStopId]);
 
   useEffect(() => {
     if (isAddingNew && newStopRef.current) {
-      newStopRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      newStopRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
   }, [isAddingNew]);
+
+  // Trip summary totals
+  const summary = useMemo(() => {
+    const totalCost = stops.reduce((sum, s) => sum + stopTotal(s), 0);
+    const totalDistance = transportSegments.reduce((sum, s) => sum + (s.distanceKm || 0), 0);
+    const totalDuration = transportSegments.reduce((sum, s) => sum + (s.durationMinutes || 0), 0);
+    return { totalCost, totalDistance, totalDuration };
+  }, [stops, transportSegments]);
 
   if (stops.length === 0 && !isAddingNew) {
     return (
@@ -76,6 +103,37 @@ export default function Timeline({
 
   return (
     <div className="p-3">
+      {/* Trip summary card */}
+      {stops.length > 0 && (
+        <div className="bg-white border border-neutral-200 rounded-[10px] px-3.5 py-2.5 mb-3 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div>
+              <p className="text-[9px] uppercase tracking-[1.2px] text-neutral-400">Distance</p>
+              <p className="text-[13px] font-data font-medium text-neutral-900">
+                {summary.totalDistance > 0 ? `${summary.totalDistance.toFixed(1)} km` : '--'}
+              </p>
+            </div>
+            <div className="w-px h-6 bg-neutral-100" />
+            <div>
+              <p className="text-[9px] uppercase tracking-[1.2px] text-neutral-400">Travel</p>
+              <p className="text-[13px] font-data font-medium text-neutral-900">
+                {summary.totalDuration > 0 ? fmtDuration(summary.totalDuration) : '--'}
+              </p>
+            </div>
+            <div className="w-px h-6 bg-neutral-100" />
+            <div>
+              <p className="text-[9px] uppercase tracking-[1.2px] text-neutral-400">Cost</p>
+              <p className="text-[13px] font-data font-medium text-neutral-900">
+                {summary.totalCost > 0 ? `¥${summary.totalCost.toLocaleString()}` : '--'}
+              </p>
+            </div>
+          </div>
+          <div className="text-[10px] text-neutral-400">
+            {stops.length} stop{stops.length !== 1 ? 's' : ''}
+          </div>
+        </div>
+      )}
+
       {stops.map((stop, idx) => {
         const next = idx < stops.length - 1 ? stops[idx + 1] : null;
         const seg = next ? findTransport(stop.id, next.id) : undefined;
