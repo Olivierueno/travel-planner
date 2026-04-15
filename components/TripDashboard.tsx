@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useCallback, FormEvent } from 'react';
 import dynamic from 'next/dynamic';
 import type { Trip, Stop, TransportSegment } from '@/lib/types';
-import { generateTimelineSVG } from '@/lib/export-svg';
+import { generatePrintHTML } from '@/lib/export-pdf';
 import Timeline from './Timeline';
 import AddStopModal from './AddStopModal';
 
@@ -86,10 +86,7 @@ export default function TripDashboard() {
 
   const calculateRoutes = useCallback(
     async (stops: Stop[], existingSegments?: TransportSegment[]): Promise<TransportSegment[]> => {
-      const sorted = [...stops].sort((a, b) => {
-        const dc = a.date.localeCompare(b.date);
-        return dc !== 0 ? dc : a.arrivalTime.localeCompare(b.arrivalTime);
-      });
+      const sorted = [...stops].sort((a, b) => a.order - b.order);
 
       if (sorted.length < 2) return [];
 
@@ -344,18 +341,16 @@ export default function TripDashboard() {
     [trip, calculateRoutes, saveTrip]
   );
 
-  const exportSVG = useCallback(() => {
-    if (!trip || sortedStops.length === 0) return;
-    const svg = generateTimelineSVG(sortedStops, trip.transportSegments, trip.title);
-    const blob = new Blob([svg], { type: 'image/svg+xml' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${trip.title.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}.svg`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+  const exportPDF = useCallback(() => {
+    if (!trip) return;
+    const dateRange = formatDateRange(trip.startDate, trip.endDate);
+    const html = generatePrintHTML(sortedStops, trip.transportSegments, trip.title, dateRange);
+    const win = window.open('', '_blank');
+    if (win) {
+      win.document.write(html);
+      win.document.close();
+      setTimeout(() => win.print(), 300);
+    }
   }, [trip, sortedStops]);
 
   const openInGoogleMaps = useCallback(() => {
@@ -533,11 +528,11 @@ export default function TripDashboard() {
             </button>
           )}
           <button
-            onClick={exportSVG}
+            onClick={exportPDF}
             className="px-3 py-[7px] border border-neutral-200 hover:border-neutral-300 rounded-lg text-[12px] font-medium text-neutral-600 transition-all duration-150"
-            title="Download timeline as SVG"
+            title="Print trip itinerary"
           >
-            SVG
+            Print
           </button>
           <button
             onClick={exportJSON}
