@@ -13,27 +13,8 @@ interface TimelineProps {
   onEditStop: (stop: Stop) => void;
   onDeleteStop: (stopId: string) => void;
   onTransportEdit: (segment: TransportSegment) => void;
-  tripStartDate?: string;
-}
-
-function formatDateHeader(dateStr: string, tripStartDate?: string): string {
-  const date = new Date(dateStr + 'T00:00:00');
-  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const monthNames = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-  ];
-
-  let prefix = '';
-  if (tripStartDate) {
-    const start = new Date(tripStartDate + 'T00:00:00');
-    const diff = Math.round(
-      (date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)
-    );
-    prefix = `Day ${diff + 1} — `;
-  }
-
-  return `${prefix}${dayNames[date.getDay()]}, ${monthNames[date.getMonth()]} ${date.getDate()}`;
+  onMoveStop: (stopId: string, direction: 'up' | 'down') => void;
+  onAddStop: () => void;
 }
 
 export default function Timeline({
@@ -45,107 +26,60 @@ export default function Timeline({
   onEditStop,
   onDeleteStop,
   onTransportEdit,
-  tripStartDate,
+  onMoveStop,
+  onAddStop,
 }: TimelineProps) {
   if (stops.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-        <div className="w-10 h-10 rounded-lg border border-neutral-200 bg-neutral-50 flex items-center justify-center mb-4">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-5 w-5 text-neutral-400"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={1.5}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-            />
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-            />
-          </svg>
-        </div>
-        <p className="text-[14px] font-medium text-neutral-900">
-          No stops planned yet
-        </p>
-        <p className="text-[13px] text-neutral-500 mt-1">
-          Click &quot;Add Stop&quot; to start building your itinerary
-        </p>
+        <p className="text-[13px] font-medium text-neutral-900">No stops yet</p>
+        <p className="text-[12px] text-neutral-500 mt-1">Add your first stop to start planning</p>
+        <button
+          onClick={onAddStop}
+          className="mt-4 px-4 py-2 bg-neutral-900 text-white rounded-lg text-[12px] font-medium hover:opacity-80 transition-opacity duration-150"
+        >
+          + Add Stop
+        </button>
       </div>
     );
   }
 
-  const grouped: Record<string, Stop[]> = {};
-  for (const stop of stops) {
-    const key = stop.date || 'unscheduled';
-    if (!grouped[key]) grouped[key] = [];
-    grouped[key].push(stop);
-  }
-
-  const sortedDates = Object.keys(grouped).sort();
-  const flatStopIds = stops.map((s) => s.id);
-
   function findTransport(fromId: string, toId: string) {
     return transportSegments.find(
-      (seg) => seg.fromStopId === fromId && seg.toStopId === toId
+      (s) => s.fromStopId === fromId && s.toStopId === toId
     );
   }
 
   return (
-    <div className="p-4">
-      {sortedDates.map((dateKey) => (
-        <div key={dateKey} className="mb-6">
-          <div
-            className="sticky top-0 z-10 py-2 mb-3"
-            style={{ background: 'var(--bg-secondary)' }}
-          >
-            <h2 className="text-[11px] uppercase tracking-[1.5px] text-neutral-500 font-normal">
-              {dateKey === 'unscheduled'
-                ? 'Unscheduled'
-                : formatDateHeader(dateKey, tripStartDate)}
-            </h2>
-          </div>
+    <div className="p-3">
+      {stops.map((stop, idx) => {
+        const next = idx < stops.length - 1 ? stops[idx + 1] : null;
+        const seg = next ? findTransport(stop.id, next.id) : undefined;
 
-          <div className="space-y-0">
-            {grouped[dateKey].map((stop) => {
-              const globalIdx = flatStopIds.indexOf(stop.id);
-              const nextId =
-                globalIdx < flatStopIds.length - 1
-                  ? flatStopIds[globalIdx + 1]
-                  : null;
-              const transport = nextId
-                ? findTransport(stop.id, nextId)
-                : undefined;
-
-              return (
-                <div key={stop.id}>
-                  <StopCard
-                    stop={stop}
-                    index={globalIdx + 1}
-                    isSelected={selectedStopId === stop.id}
-                    onStopClick={() => onStopClick(stop.id)}
-                    onSave={onSaveStop}
-                    onEdit={() => onEditStop(stop)}
-                    onDelete={() => onDeleteStop(stop.id)}
-                  />
-                  {transport && (
-                    <TransportSegmentCard
-                      segment={transport}
-                      onEdit={onTransportEdit}
-                    />
-                  )}
-                </div>
-              );
-            })}
+        return (
+          <div key={stop.id}>
+            <StopCard
+              stop={stop}
+              index={idx + 1}
+              total={stops.length}
+              isSelected={selectedStopId === stop.id}
+              onStopClick={() => onStopClick(stop.id)}
+              onSave={onSaveStop}
+              onEdit={() => onEditStop(stop)}
+              onDelete={() => onDeleteStop(stop.id)}
+              onMove={(dir) => onMoveStop(stop.id, dir)}
+            />
+            {seg && <TransportSegmentCard segment={seg} onEdit={onTransportEdit} />}
           </div>
-        </div>
-      ))}
+        );
+      })}
+
+      <button
+        onClick={onAddStop}
+        className="w-full mt-3 py-2 border border-dashed border-neutral-300 hover:border-neutral-400 rounded-[10px] text-[12px] text-neutral-400 hover:text-neutral-600 transition-all duration-150"
+      >
+        + Add Stop
+      </button>
     </div>
   );
 }

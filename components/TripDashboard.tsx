@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useCallback, FormEvent } from 'react';
 import dynamic from 'next/dynamic';
 import type { Trip, Stop, TransportSegment } from '@/lib/types';
+import { generateTimelineSVG } from '@/lib/export-svg';
 import Timeline from './Timeline';
 import AddStopModal from './AddStopModal';
 
@@ -319,11 +320,43 @@ export default function TripDashboard() {
 
   const sortedStops = useMemo(() => {
     if (!trip) return [];
-    return [...trip.stops].sort((a, b) => {
-      const dc = a.date.localeCompare(b.date);
-      return dc !== 0 ? dc : a.arrivalTime.localeCompare(b.arrivalTime);
-    });
+    return [...trip.stops].sort((a, b) => a.order - b.order);
   }, [trip]);
+
+  const moveStop = useCallback(
+    async (stopId: string, direction: 'up' | 'down') => {
+      if (!trip) return;
+      const sorted = [...trip.stops].sort((a, b) => a.order - b.order);
+      const idx = sorted.findIndex((s) => s.id === stopId);
+      if (idx === -1) return;
+      if (direction === 'up' && idx === 0) return;
+      if (direction === 'down' && idx === sorted.length - 1) return;
+
+      const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+      const orderA = sorted[idx].order;
+      const orderB = sorted[swapIdx].order;
+      sorted[idx] = { ...sorted[idx], order: orderB };
+      sorted[swapIdx] = { ...sorted[swapIdx], order: orderA };
+
+      const segments = await calculateRoutes(sorted);
+      await saveTrip({ ...trip, stops: sorted, transportSegments: segments });
+    },
+    [trip, calculateRoutes, saveTrip]
+  );
+
+  const exportSVG = useCallback(() => {
+    if (!trip || sortedStops.length === 0) return;
+    const svg = generateTimelineSVG(sortedStops, trip.transportSegments, trip.title);
+    const blob = new Blob([svg], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${trip.title.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}.svg`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [trip, sortedStops]);
 
   const openInGoogleMaps = useCallback(() => {
     if (sortedStops.length === 0) return;
@@ -500,10 +533,18 @@ export default function TripDashboard() {
             </button>
           )}
           <button
+            onClick={exportSVG}
+            className="px-3 py-[7px] border border-neutral-200 hover:border-neutral-300 rounded-lg text-[12px] font-medium text-neutral-600 transition-all duration-150"
+            title="Download timeline as SVG"
+          >
+            SVG
+          </button>
+          <button
             onClick={exportJSON}
             className="px-3 py-[7px] border border-neutral-200 hover:border-neutral-300 rounded-lg text-[12px] font-medium text-neutral-600 transition-all duration-150"
+            title="Download trip data as JSON"
           >
-            Export
+            JSON
           </button>
         </div>
       </header>
@@ -537,7 +578,11 @@ export default function TripDashboard() {
             }}
             onDeleteStop={deleteStop}
             onTransportEdit={updateTransportSegment}
-            tripStartDate={trip.startDate}
+            onMoveStop={moveStop}
+            onAddStop={() => {
+              setEditingStop(null);
+              setShowAddStop(true);
+            }}
           />
         </div>
       </div>
