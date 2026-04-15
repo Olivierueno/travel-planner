@@ -21,16 +21,31 @@ interface GeoResult {
 }
 
 const CATEGORIES: StopCategory[] = [
-  'temple', 'shrine', 'museum', 'park', 'food', 'shopping',
-  'onsen', 'entertainment', 'nature', 'accommodation', 'transport-hub', 'other',
+  'temple',
+  'shrine',
+  'museum',
+  'park',
+  'food',
+  'shopping',
+  'onsen',
+  'entertainment',
+  'nature',
+  'accommodation',
+  'transport-hub',
+  'other',
 ];
 
 function timeDiffMinutes(arrival: string, departure: string): number {
   if (!arrival || !departure) return 0;
   const [aH, aM] = arrival.split(':').map(Number);
   const [dH, dM] = departure.split(':').map(Number);
-  return (dH * 60 + dM) - (aH * 60 + aM);
+  return dH * 60 + dM - (aH * 60 + aM);
 }
+
+const labelClass =
+  'block text-[11px] uppercase tracking-[0.5px] text-neutral-500 mb-1.5';
+const inputClass =
+  'w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-[14px] text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:border-neutral-400 transition-[border-color] duration-150';
 
 export default function AddStopModal({
   isOpen,
@@ -55,9 +70,7 @@ export default function AddStopModal({
   const [notes, setNotes] = useState('');
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const modalRef = useRef<HTMLDivElement>(null);
 
-  // Pre-fill when editing
   useEffect(() => {
     if (editingStop) {
       setName(editingStop.name);
@@ -86,7 +99,6 @@ export default function AddStopModal({
     setShowResults(false);
   }, [editingStop, isOpen]);
 
-  // Debounced place search
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
@@ -99,7 +111,9 @@ export default function AddStopModal({
     debounceRef.current = setTimeout(async () => {
       setSearching(true);
       try {
-        const res = await fetch(`/api/geocode?q=${encodeURIComponent(searchQuery)}`);
+        const res = await fetch(
+          `/api/geocode?q=${encodeURIComponent(searchQuery)}`
+        );
         const data = await res.json();
         setSearchResults(data.results || []);
         setShowResults(true);
@@ -125,10 +139,7 @@ export default function AddStopModal({
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-
-    if (!name.trim() || lat === null || lng === null) {
-      return;
-    }
+    if (!name.trim() || lat === null || lng === null) return;
 
     const duration = timeDiffMinutes(arrivalTime, departureTime);
 
@@ -154,43 +165,50 @@ export default function AddStopModal({
     onSave(stop);
   }
 
-  function handleOverlayClick(e: React.MouseEvent) {
-    if (e.target === e.currentTarget) {
-      onClose();
-    }
-  }
-
   if (!isOpen) return null;
 
   return (
     <div
-      className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-      onClick={handleOverlayClick}
+      className="fixed inset-0 z-[10000] flex items-center justify-center p-4"
+      style={{ background: 'rgba(0, 0, 0, 0.4)' }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
-      <div
-        ref={modalRef}
-        className="bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto"
-      >
+      <div className="bg-white rounded-[10px] border border-neutral-200 w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-lg">
         {/* Header */}
-        <div className="px-6 pt-6 pb-4 border-b border-slate-200">
-          <h2 className="text-lg font-bold text-slate-900">
+        <div className="px-6 pt-6 pb-4 border-b border-neutral-200">
+          <h2 className="text-[15px] font-semibold text-neutral-900">
             {editingStop ? 'Edit Stop' : 'Add Stop'}
           </h2>
-          <p className="text-sm text-slate-500 mt-1">
-            {editingStop ? 'Update the details of this stop' : 'Search for a place or enter details manually'}
+          <p className="text-[13px] text-neutral-500 mt-1">
+            {editingStop
+              ? 'Update the details of this stop'
+              : 'Search for a place or enter details manually'}
           </p>
         </div>
 
         {/* Body */}
-        <form onSubmit={handleSubmit} className="px-6 py-4 space-y-4">
+        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
           {/* Place Search */}
           <div className="relative">
-            <label htmlFor="place-search" className="block text-sm font-medium text-slate-700 mb-1">
+            <label htmlFor="place-search" className={labelClass}>
               Search Place
             </label>
             <div className="relative">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
               </svg>
               <input
                 id="place-search"
@@ -198,27 +216,30 @@ export default function AddStopModal({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search for a place in Japan..."
-                className="border border-slate-300 rounded-lg pl-9 pr-3 py-2 w-full text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent"
+                className={`${inputClass} !pl-9`}
               />
               {searching && (
                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-rose-500" />
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-neutral-400" />
                 </div>
               )}
             </div>
 
-            {/* Search Results Dropdown */}
             {showResults && searchResults.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-lg shadow-lg border border-slate-200 z-30 max-h-48 overflow-y-auto">
+              <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-lg border border-neutral-200 z-10 max-h-48 overflow-y-auto shadow-sm">
                 {searchResults.map((result, i) => (
                   <button
                     key={i}
                     type="button"
                     onClick={() => handleSelectResult(result)}
-                    className="w-full text-left px-4 py-2 hover:bg-slate-50 border-b border-slate-100 last:border-0"
+                    className="w-full text-left px-4 py-2.5 hover:bg-neutral-50 border-b border-neutral-100 last:border-0 transition-colors duration-150"
                   >
-                    <p className="text-sm font-medium text-slate-900">{result.name}</p>
-                    <p className="text-xs text-slate-500 truncate">{result.displayName}</p>
+                    <p className="text-[13px] font-medium text-neutral-900">
+                      {result.name}
+                    </p>
+                    <p className="text-[11px] text-neutral-500 truncate">
+                      {result.displayName}
+                    </p>
                   </button>
                 ))}
               </div>
@@ -227,8 +248,8 @@ export default function AddStopModal({
 
           {/* Name */}
           <div>
-            <label htmlFor="stop-name" className="block text-sm font-medium text-slate-700 mb-1">
-              Name <span className="text-red-400">*</span>
+            <label htmlFor="stop-name" className={labelClass}>
+              Name <span className="text-red-400 normal-case">*</span>
             </label>
             <input
               id="stop-name"
@@ -237,20 +258,20 @@ export default function AddStopModal({
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g., Fushimi Inari Shrine"
               required
-              className="border border-slate-300 rounded-lg px-3 py-2 w-full text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent"
+              className={inputClass}
             />
           </div>
 
           {/* Category */}
           <div>
-            <label htmlFor="stop-category" className="block text-sm font-medium text-slate-700 mb-1">
+            <label htmlFor="stop-category" className={labelClass}>
               Category
             </label>
             <select
               id="stop-category"
               value={category}
               onChange={(e) => setCategory(e.target.value as StopCategory)}
-              className="border border-slate-300 rounded-lg px-3 py-2 w-full text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent"
+              className={inputClass}
             >
               {CATEGORIES.map((cat) => (
                 <option key={cat} value={cat}>
@@ -262,7 +283,7 @@ export default function AddStopModal({
 
           {/* Date */}
           <div>
-            <label htmlFor="stop-date" className="block text-sm font-medium text-slate-700 mb-1">
+            <label htmlFor="stop-date" className={labelClass}>
               Date
             </label>
             <input
@@ -270,41 +291,41 @@ export default function AddStopModal({
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="border border-slate-300 rounded-lg px-3 py-2 w-full text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent"
+              className={inputClass}
             />
           </div>
 
           {/* Time row */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label htmlFor="stop-arrival" className="block text-sm font-medium text-slate-700 mb-1">
-                Arrival Time
+              <label htmlFor="stop-arrival" className={labelClass}>
+                Arrival
               </label>
               <input
                 id="stop-arrival"
                 type="time"
                 value={arrivalTime}
                 onChange={(e) => setArrivalTime(e.target.value)}
-                className="border border-slate-300 rounded-lg px-3 py-2 w-full text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent"
+                className={inputClass}
               />
             </div>
             <div>
-              <label htmlFor="stop-departure" className="block text-sm font-medium text-slate-700 mb-1">
-                Departure Time
+              <label htmlFor="stop-departure" className={labelClass}>
+                Departure
               </label>
               <input
                 id="stop-departure"
                 type="time"
                 value={departureTime}
                 onChange={(e) => setDepartureTime(e.target.value)}
-                className="border border-slate-300 rounded-lg px-3 py-2 w-full text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent"
+                className={inputClass}
               />
             </div>
           </div>
 
           {/* Cost */}
           <div>
-            <label htmlFor="stop-cost" className="block text-sm font-medium text-slate-700 mb-1">
+            <label htmlFor="stop-cost" className={labelClass}>
               Cost (¥)
             </label>
             <input
@@ -313,13 +334,13 @@ export default function AddStopModal({
               value={costJPY}
               onChange={(e) => setCostJPY(parseInt(e.target.value) || 0)}
               min={0}
-              className="border border-slate-300 rounded-lg px-3 py-2 w-full text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent"
+              className={inputClass}
             />
           </div>
 
           {/* Notes */}
           <div>
-            <label htmlFor="stop-notes" className="block text-sm font-medium text-slate-700 mb-1">
+            <label htmlFor="stop-notes" className={labelClass}>
               Notes
             </label>
             <textarea
@@ -328,37 +349,37 @@ export default function AddStopModal({
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
               placeholder="Any additional notes..."
-              className="border border-slate-300 rounded-lg px-3 py-2 w-full text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent resize-none"
+              className={`${inputClass} resize-none`}
             />
           </div>
 
           {/* Coordinates indicator */}
           {lat !== null && lng !== null && (
-            <div className="text-xs text-slate-400">
-              Coordinates: {lat.toFixed(5)}, {lng.toFixed(5)}
-            </div>
+            <p className="text-[11px] text-neutral-400 font-data">
+              {lat.toFixed(5)}, {lng.toFixed(5)}
+            </p>
           )}
           {lat === null && (
-            <div className="text-xs text-amber-500">
+            <p className="text-[11px] text-amber-600">
               Search for a place above to set the location
-            </div>
+            </p>
           )}
 
           {/* Footer */}
-          <div className="flex justify-end gap-3 pt-2 border-t border-slate-200">
+          <div className="flex justify-end gap-2 pt-3 border-t border-neutral-200">
             <button
               type="button"
               onClick={onClose}
-              className="border border-slate-300 hover:bg-slate-50 px-4 py-2 rounded-lg text-sm font-medium text-slate-700 transition-colors"
+              className="px-4 py-2 border border-neutral-200 hover:border-neutral-300 rounded-lg text-[13px] font-medium text-neutral-600 transition-all duration-150"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={!name.trim() || lat === null || lng === null}
-              className="bg-rose-500 hover:bg-rose-600 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+              className="px-5 py-2 bg-neutral-900 text-white rounded-lg text-[13px] font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-80 transition-opacity duration-150"
             >
-              {editingStop ? 'Update Stop' : 'Add Stop'}
+              {editingStop ? 'Update' : 'Add Stop'}
             </button>
           </div>
         </form>

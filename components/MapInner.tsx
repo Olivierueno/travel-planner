@@ -1,7 +1,14 @@
 'use client';
 
 import { useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from 'react-leaflet';
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Polyline,
+  Popup,
+  useMap,
+} from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { Stop, TransportSegment } from '@/lib/types';
@@ -11,22 +18,23 @@ function createNumberedIcon(number: number, color: string): L.DivIcon {
   return L.divIcon({
     className: 'custom-marker',
     html: `<div style="
-      background: white;
-      border: 3px solid ${color};
+      background: #fff;
+      border: 2px solid ${color};
       border-radius: 50%;
-      width: 32px;
-      height: 32px;
+      width: 28px;
+      height: 28px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-weight: 700;
-      font-size: 13px;
+      font-weight: 600;
+      font-size: 12px;
       color: ${color};
-      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
     ">${number}</div>`,
-    iconSize: [32, 32],
-    iconAnchor: [16, 16],
-    popupAnchor: [0, -20],
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
+    popupAnchor: [0, -18],
   });
 }
 
@@ -41,7 +49,9 @@ function FitBounds({ stops }: { stops: Stop[] }) {
       map.setView([stops[0].lat, stops[0].lng], 13);
       return;
     }
-    const bounds = L.latLngBounds(stops.map((s) => [s.lat, s.lng] as [number, number]));
+    const bounds = L.latLngBounds(
+      stops.map((s) => [s.lat, s.lng] as [number, number])
+    );
     map.fitBounds(bounds, { padding: [50, 50] });
   }, [stops, map]);
   return null;
@@ -64,10 +74,6 @@ interface MapProps {
   onStopClick: (stopId: string) => void;
 }
 
-function formatTime(time: string): string {
-  return time || '--:--';
-}
-
 export default function MapInner({
   stops,
   transportSegments,
@@ -87,40 +93,41 @@ export default function MapInner({
       scrollWheelZoom={true}
     >
       <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       <FitBounds stops={stops} />
       <FlyToStop stop={selectedStop} />
 
-      {/* Stop markers */}
       {stops.map((stop, index) => {
-        const config = CATEGORY_CONFIG[stop.category] || CATEGORY_CONFIG.other;
+        const config =
+          CATEGORY_CONFIG[stop.category] || CATEGORY_CONFIG.other;
         return (
           <Marker
             key={stop.id}
             position={[stop.lat, stop.lng]}
             icon={createNumberedIcon(index + 1, config.color)}
-            eventHandlers={{
-              click: () => onStopClick(stop.id),
-            }}
+            eventHandlers={{ click: () => onStopClick(stop.id) }}
           >
             <Popup>
-              <div className="text-sm min-w-[140px]">
-                <div className="flex items-center gap-1 font-semibold text-slate-900">
+              <div>
+                <div className="flex items-center gap-1.5 font-semibold text-neutral-900 text-[13px]">
                   <span>{config.icon}</span>
                   <span>{stop.name}</span>
                 </div>
                 {stop.date && (
-                  <p className="text-slate-500 text-xs mt-1">{stop.date}</p>
+                  <p className="text-neutral-500 text-[11px] mt-1">
+                    {stop.date}
+                  </p>
                 )}
                 {(stop.arrivalTime || stop.departureTime) && (
-                  <p className="text-slate-500 text-xs">
-                    {formatTime(stop.arrivalTime)} → {formatTime(stop.departureTime)}
+                  <p className="text-neutral-500 text-[11px] font-data">
+                    {stop.arrivalTime || '--:--'} —{' '}
+                    {stop.departureTime || '--:--'}
                   </p>
                 )}
                 {stop.costJPY > 0 && (
-                  <p className="text-emerald-600 text-xs font-medium mt-1">
+                  <p className="text-neutral-600 text-[11px] font-data font-medium mt-1">
                     ¥{stop.costJPY.toLocaleString()}
                   </p>
                 )}
@@ -130,11 +137,11 @@ export default function MapInner({
         );
       })}
 
-      {/* Transport route polylines */}
       {transportSegments.map((segment) => {
-        if (!segment.routeGeometry || segment.routeGeometry.length < 2) return null;
-        const config = TRANSPORT_CONFIG[segment.mode] || TRANSPORT_CONFIG.train;
-        const isWalk = segment.mode === 'walk';
+        if (!segment.routeGeometry || segment.routeGeometry.length < 2)
+          return null;
+        const config =
+          TRANSPORT_CONFIG[segment.mode] || TRANSPORT_CONFIG.train;
 
         return (
           <Polyline
@@ -142,9 +149,9 @@ export default function MapInner({
             positions={segment.routeGeometry}
             pathOptions={{
               color: config.color,
-              weight: 4,
-              opacity: 0.7,
-              ...(isWalk ? { dashArray: '8, 12' } : {}),
+              weight: 3,
+              opacity: 0.6,
+              ...(segment.mode === 'walk' ? { dashArray: '6, 10' } : {}),
             }}
           />
         );
