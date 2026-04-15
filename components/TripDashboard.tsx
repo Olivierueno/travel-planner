@@ -5,7 +5,6 @@ import dynamic from 'next/dynamic';
 import type { Trip, Stop, TransportSegment } from '@/lib/types';
 import { generatePrintHTML } from '@/lib/export-pdf';
 import Timeline from './Timeline';
-import AddStopModal from './AddStopModal';
 
 const Map = dynamic(() => import('./MapInner'), {
   ssr: false,
@@ -40,8 +39,8 @@ export default function TripDashboard() {
   const [trip, setTrip] = useState<Trip | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
-  const [showAddStop, setShowAddStop] = useState(false);
-  const [editingStop, setEditingStop] = useState<Stop | null>(null);
+  const [expandedStopId, setExpandedStopId] = useState<string | null>(null);
+  const [isAddingNew, setIsAddingNew] = useState(false);
   const [routesLoading, setRoutesLoading] = useState(false);
 
   const [createTitle, setCreateTitle] = useState('');
@@ -99,7 +98,6 @@ export default function TripDashboard() {
 
         return await Promise.all(
           pairs.map(async ({ from, to }) => {
-            // Check for existing segment to preserve mode preference
             const existing = (existingSegments || []).find(
               (seg) => seg.fromStopId === from.id && seg.toStopId === to.id
             );
@@ -159,6 +157,36 @@ export default function TripDashboard() {
     [trip, saveTrip]
   );
 
+  const editStop = useCallback(
+    async (updatedStop: Stop) => {
+      if (!trip) return;
+      const updatedStops = trip.stops.map((s) =>
+        s.id === updatedStop.id ? updatedStop : s
+      );
+      const transportSegments = await calculateRoutes(
+        updatedStops,
+        trip.transportSegments
+      );
+      await saveTrip({
+        ...trip,
+        stops: updatedStops,
+        transportSegments,
+        changelog: [
+          ...trip.changelog,
+          {
+            id: crypto.randomUUID(),
+            action: 'stop.edited',
+            detail: `Edited "${updatedStop.name}"`,
+            member: 'Me',
+            timestamp: new Date().toISOString(),
+          },
+        ],
+      });
+      setExpandedStopId(null);
+    },
+    [trip, calculateRoutes, saveTrip]
+  );
+
   const addStop = useCallback(
     async (stopData: Stop) => {
       if (!trip) return;
@@ -187,39 +215,7 @@ export default function TripDashboard() {
           },
         ],
       });
-      setShowAddStop(false);
-      setEditingStop(null);
-    },
-    [trip, calculateRoutes, saveTrip]
-  );
-
-  const editStop = useCallback(
-    async (updatedStop: Stop) => {
-      if (!trip) return;
-      const updatedStops = trip.stops.map((s) =>
-        s.id === updatedStop.id ? updatedStop : s
-      );
-      const transportSegments = await calculateRoutes(
-        updatedStops,
-        trip.transportSegments
-      );
-      await saveTrip({
-        ...trip,
-        stops: updatedStops,
-        transportSegments,
-        changelog: [
-          ...trip.changelog,
-          {
-            id: crypto.randomUUID(),
-            action: 'stop.edited',
-            detail: `Edited "${updatedStop.name}"`,
-            member: 'Me',
-            timestamp: new Date().toISOString(),
-          },
-        ],
-      });
-      setShowAddStop(false);
-      setEditingStop(null);
+      setIsAddingNew(false);
     },
     [trip, calculateRoutes, saveTrip]
   );
@@ -250,15 +246,15 @@ export default function TripDashboard() {
         ],
       });
       if (selectedStopId === stopId) setSelectedStopId(null);
+      if (expandedStopId === stopId) setExpandedStopId(null);
     },
-    [trip, calculateRoutes, saveTrip, selectedStopId]
+    [trip, calculateRoutes, saveTrip, selectedStopId, expandedStopId]
   );
 
   const updateTransportSegment = useCallback(
     async (updated: TransportSegment) => {
       if (!trip) return;
 
-      // Re-fetch routing data for the new mode
       const fromStop = trip.stops.find((s) => s.id === updated.fromStopId);
       const toStop = trip.stops.find((s) => s.id === updated.toStopId);
 
@@ -361,6 +357,35 @@ export default function TripDashboard() {
       '_blank'
     );
   }, [sortedStops]);
+
+  const toggleExpand = useCallback((stopId: string) => {
+    setExpandedStopId(prev => prev === stopId ? null : stopId);
+    setIsAddingNew(false);
+  }, []);
+
+  const startAddStop = useCallback(() => {
+    setIsAddingNew(true);
+    setExpandedStopId(null);
+  }, []);
+
+  const cancelAddStop = useCallback(() => {
+    setIsAddingNew(false);
+  }, []);
+
+  // When a stop is expanded and the user saves via the inline form,
+  // we need to handle it as an edit (recalculate routes).
+  const handleSaveStop = useCallback(
+    async (updatedStop: Stop) => {
+      // If it's the currently expanded stop, treat as full edit with route recalc
+      if (expandedStopId === updatedStop.id) {
+        await editStop(updatedStop);
+      } else {
+        // Inline save (accommodations/activities from compact view)
+        await saveStop(updatedStop);
+      }
+    },
+    [expandedStopId, editStop, saveStop]
+  );
 
   async function handleCreateTrip(e: FormEvent) {
     e.preventDefault();
@@ -510,10 +535,7 @@ export default function TripDashboard() {
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-neutral-400" />
           )}
           <button
-            onClick={() => {
-              setEditingStop(null);
-              setShowAddStop(true);
-            }}
+            onClick={startAddStop}
             className="px-4 py-[7px] bg-neutral-900 text-white rounded-lg text-[12px] font-medium hover:opacity-80 transition-opacity duration-150"
           >
             + Add Stop
@@ -565,36 +587,20 @@ export default function TripDashboard() {
             stops={sortedStops}
             transportSegments={trip.transportSegments}
             selectedStopId={selectedStopId}
+            expandedStopId={expandedStopId}
+            isAddingNew={isAddingNew}
             onStopClick={setSelectedStopId}
-            onSaveStop={saveStop}
-            onEditStop={(stop) => {
-              setEditingStop(stop);
-              setShowAddStop(true);
-            }}
+            onToggleExpand={toggleExpand}
+            onSaveStop={handleSaveStop}
+            onAddNewStop={addStop}
             onDeleteStop={deleteStop}
             onTransportEdit={updateTransportSegment}
             onMoveStop={moveStop}
-            onAddStop={() => {
-              setEditingStop(null);
-              setShowAddStop(true);
-            }}
+            onStartAddStop={startAddStop}
+            onCancelAddStop={cancelAddStop}
           />
         </div>
       </div>
-
-      {/* Modal */}
-      {showAddStop && (
-        <AddStopModal
-          isOpen={showAddStop}
-          onClose={() => {
-            setShowAddStop(false);
-            setEditingStop(null);
-          }}
-          onSave={editingStop ? editStop : addStop}
-          editingStop={editingStop}
-          existingStopsCount={trip.stops.length}
-        />
-      )}
     </div>
   );
 }

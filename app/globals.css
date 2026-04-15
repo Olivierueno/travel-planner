@@ -46,3 +46,13 @@ body {
 .font-data {
   font-family: "SF Mono", "Menlo", "Monaco", "Cascadia Code", monospace;
 }
+
+/* Smooth expand transitions */
+.expand-content {
+  animation: expandIn 0.2s ease-out;
+}
+
+@keyframes expandIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
