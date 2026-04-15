@@ -7,6 +7,7 @@ export async function GET(request: NextRequest) {
   const fromLng = parseFloat(searchParams.get('from_lng') || '');
   const toLat = parseFloat(searchParams.get('to_lat') || '');
   const toLng = parseFloat(searchParams.get('to_lng') || '');
+  const mode = (searchParams.get('mode') || 'car') as 'car' | 'walk';
 
   if ([fromLat, fromLng, toLat, toLng].some(isNaN)) {
     return NextResponse.json(
@@ -16,7 +17,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const result = await getRoute(fromLat, fromLng, toLat, toLng);
+    const result = await getRoute(fromLat, fromLng, toLat, toLng, mode);
     return NextResponse.json(result);
   } catch (err) {
     return NextResponse.json(

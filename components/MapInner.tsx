@@ -1,71 +1,7 @@
 'use client';
 
-import { useEffect } from 'react';
-import {
-  MapContainer,
-  TileLayer,
-  Marker,
-  Polyline,
-  Popup,
-  useMap,
-} from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import { useMemo, useState } from 'react';
 import type { Stop, TransportSegment } from '@/lib/types';
-import { CATEGORY_CONFIG, TRANSPORT_CONFIG } from '@/lib/types';
-
-function createNumberedIcon(number: number, color: string): L.DivIcon {
-  return L.divIcon({
-    className: 'custom-marker',
-    html: `<div style="
-      background: #fff;
-      border: 2px solid ${color};
-      border-radius: 50%;
-      width: 28px;
-      height: 28px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 600;
-      font-size: 12px;
-      color: ${color};
-      box-shadow: 0 1px 4px rgba(0,0,0,0.15);
-      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-    ">${number}</div>`,
-    iconSize: [28, 28],
-    iconAnchor: [14, 14],
-    popupAnchor: [0, -18],
-  });
-}
-
-function FitBounds({ stops }: { stops: Stop[] }) {
-  const map = useMap();
-  useEffect(() => {
-    if (stops.length === 0) {
-      map.setView([36.5, 138], 6);
-      return;
-    }
-    if (stops.length === 1) {
-      map.setView([stops[0].lat, stops[0].lng], 13);
-      return;
-    }
-    const bounds = L.latLngBounds(
-      stops.map((s) => [s.lat, s.lng] as [number, number])
-    );
-    map.fitBounds(bounds, { padding: [50, 50] });
-  }, [stops, map]);
-  return null;
-}
-
-function FlyToStop({ stop }: { stop: Stop | undefined }) {
-  const map = useMap();
-  useEffect(() => {
-    if (stop) {
-      map.flyTo([stop.lat, stop.lng], 14, { duration: 0.5 });
-    }
-  }, [stop, map]);
-  return null;
-}
 
 interface MapProps {
   stops: Stop[];
@@ -74,88 +10,89 @@ interface MapProps {
   onStopClick: (stopId: string) => void;
 }
 
-export default function MapInner({
-  stops,
-  transportSegments,
-  selectedStopId,
-  onStopClick,
-}: MapProps) {
-  const selectedStop = selectedStopId
-    ? stops.find((s) => s.id === selectedStopId)
-    : undefined;
+function buildEmbedUrl(stops: Stop[]): string {
+  const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY;
+
+  // No API key — show a fallback message
+  if (!key) return '';
+
+  const base = 'https://www.google.com/maps/embed/v1';
+
+  if (stops.length === 0) {
+    return `${base}/view?key=${key}&center=36.5,138&zoom=6`;
+  }
+
+  if (stops.length === 1) {
+    const s = stops[0];
+    return `${base}/place?key=${key}&q=${s.lat},${s.lng}&zoom=14`;
+  }
+
+  // Directions mode: origin, destination, waypoints
+  const origin = `${stops[0].lat},${stops[0].lng}`;
+  const destination = `${stops[stops.length - 1].lat},${stops[stops.length - 1].lng}`;
+
+  let url = `${base}/directions?key=${key}&origin=${origin}&destination=${destination}`;
+
+  // Waypoints (stops in between first and last)
+  if (stops.length > 2) {
+    const waypoints = stops
+      .slice(1, -1)
+      .map((s) => `${s.lat},${s.lng}`)
+      .join('|');
+    url += `&waypoints=${encodeURIComponent(waypoints)}`;
+  }
+
+  return url;
+}
+
+export default function MapInner({ stops }: MapProps) {
+  const mapUrl = useMemo(() => buildEmbedUrl(stops), [stops]);
+  const [loaded, setLoaded] = useState(false);
+
+  if (!mapUrl) {
+    return (
+      <div
+        className="w-full h-full flex flex-col items-center justify-center gap-3 p-6 text-center"
+        style={{ background: 'var(--bg-secondary)' }}
+      >
+        <div className="w-10 h-10 rounded-lg border border-neutral-200 bg-white flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+          </svg>
+        </div>
+        <div>
+          <p className="text-[13px] font-medium text-neutral-900">
+            Google Maps API key required
+          </p>
+          <p className="text-[12px] text-neutral-500 mt-1 max-w-[280px]">
+            Add <span className="font-data text-[11px]">NEXT_PUBLIC_GOOGLE_MAPS_KEY</span> to
+            your environment variables
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <MapContainer
-      center={[36.5, 138]}
-      zoom={6}
-      className="h-full w-full"
-      zoomControl={true}
-      scrollWheelZoom={true}
-    >
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+    <div className="relative w-full h-full">
+      {!loaded && (
+        <div
+          className="absolute inset-0 flex items-center justify-center"
+          style={{ background: 'var(--bg-secondary)' }}
+        >
+          <span className="text-[13px] text-neutral-400">
+            Loading Google Maps...
+          </span>
+        </div>
+      )}
+      <iframe
+        src={mapUrl}
+        className="w-full h-full border-0"
+        allowFullScreen
+        loading="lazy"
+        referrerPolicy="no-referrer-when-downgrade"
+        onLoad={() => setLoaded(true)}
       />
-      <FitBounds stops={stops} />
-      <FlyToStop stop={selectedStop} />
-
-      {stops.map((stop, index) => {
-        const config =
-          CATEGORY_CONFIG[stop.category] || CATEGORY_CONFIG.other;
-        return (
-          <Marker
-            key={stop.id}
-            position={[stop.lat, stop.lng]}
-            icon={createNumberedIcon(index + 1, config.color)}
-            eventHandlers={{ click: () => onStopClick(stop.id) }}
-          >
-            <Popup>
-              <div>
-                <div className="flex items-center gap-1.5 font-semibold text-neutral-900 text-[13px]">
-                  <span>{config.icon}</span>
-                  <span>{stop.name}</span>
-                </div>
-                {stop.date && (
-                  <p className="text-neutral-500 text-[11px] mt-1">
-                    {stop.date}
-                  </p>
-                )}
-                {(stop.arrivalTime || stop.departureTime) && (
-                  <p className="text-neutral-500 text-[11px] font-data">
-                    {stop.arrivalTime || '--:--'} —{' '}
-                    {stop.departureTime || '--:--'}
-                  </p>
-                )}
-                {stop.costJPY > 0 && (
-                  <p className="text-neutral-600 text-[11px] font-data font-medium mt-1">
-                    ¥{stop.costJPY.toLocaleString()}
-                  </p>
-                )}
-              </div>
-            </Popup>
-          </Marker>
-        );
-      })}
-
-      {transportSegments.map((segment) => {
-        if (!segment.routeGeometry || segment.routeGeometry.length < 2)
-          return null;
-        const config =
-          TRANSPORT_CONFIG[segment.mode] || TRANSPORT_CONFIG.train;
-
-        return (
-          <Polyline
-            key={segment.id}
-            positions={segment.routeGeometry}
-            pathOptions={{
-              color: config.color,
-              weight: 3,
-              opacity: 0.6,
-              ...(segment.mode === 'walk' ? { dashArray: '6, 10' } : {}),
-            }}
-          />
-        );
-      })}
-    </MapContainer>
+    </div>
   );
 }

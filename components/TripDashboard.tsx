@@ -9,7 +9,10 @@ import AddStopModal from './AddStopModal';
 const Map = dynamic(() => import('./MapInner'), {
   ssr: false,
   loading: () => (
-    <div className="h-full w-full flex items-center justify-center" style={{ background: 'var(--bg-secondary)' }}>
+    <div
+      className="h-full w-full flex items-center justify-center"
+      style={{ background: 'var(--bg-secondary)' }}
+    >
       <span className="text-[13px] text-neutral-400">Loading map...</span>
     </div>
   ),
@@ -27,9 +30,9 @@ function formatDateRange(start: string, end: string): string {
     return `${monthNames[s.getMonth()]} ${s.getDate()}, ${s.getFullYear()}`;
   }
   if (s.getMonth() === e.getMonth() && s.getFullYear() === e.getFullYear()) {
-    return `${monthNames[s.getMonth()]} ${s.getDate()} – ${e.getDate()}, ${e.getFullYear()}`;
+    return `${monthNames[s.getMonth()]} ${s.getDate()} \u2013 ${e.getDate()}, ${e.getFullYear()}`;
   }
-  return `${monthNames[s.getMonth()]} ${s.getDate()} – ${monthNames[e.getMonth()]} ${e.getDate()}, ${e.getFullYear()}`;
+  return `${monthNames[s.getMonth()]} ${s.getDate()} \u2013 ${monthNames[e.getMonth()]} ${e.getDate()}, ${e.getFullYear()}`;
 }
 
 export default function TripDashboard() {
@@ -81,7 +84,7 @@ export default function TripDashboard() {
   );
 
   const calculateRoutes = useCallback(
-    async (stops: Stop[]): Promise<TransportSegment[]> => {
+    async (stops: Stop[], existingSegments?: TransportSegment[]): Promise<TransportSegment[]> => {
       const sorted = [...stops].sort((a, b) => {
         const dc = a.date.localeCompare(b.date);
         return dc !== 0 ? dc : a.arrivalTime.localeCompare(b.arrivalTime);
@@ -98,12 +101,22 @@ export default function TripDashboard() {
 
         return await Promise.all(
           pairs.map(async ({ from, to }) => {
+            // Check for existing segment to preserve mode preference
+            const existing = (existingSegments || []).find(
+              (seg) => seg.fromStopId === from.id && seg.toStopId === to.id
+            );
+            const mode =
+              existing?.mode === 'car' || existing?.mode === 'walk'
+                ? existing.mode
+                : 'car';
+
             try {
               const params = new URLSearchParams({
                 from_lat: String(from.lat),
                 from_lng: String(from.lng),
                 to_lat: String(to.lat),
                 to_lng: String(to.lng),
+                mode,
               });
               const res = await fetch(`/api/routing?${params}`);
               if (!res.ok) throw new Error();
@@ -112,29 +125,19 @@ export default function TripDashboard() {
                 id: `${from.id}-${to.id}`,
                 fromStopId: from.id,
                 toStopId: to.id,
-                mode: 'train' as const,
+                mode: mode as 'car' | 'walk',
                 distanceKm: data.distanceKm || 0,
                 durationMinutes: data.durationMinutes || 0,
-                costJPY: 0,
-                routeGeometry: data.geometry || [
-                  [from.lat, from.lng],
-                  [to.lat, to.lng],
-                ],
-                notes: '',
+                notes: existing?.notes || '',
               };
             } catch {
               return {
                 id: `${from.id}-${to.id}`,
                 fromStopId: from.id,
                 toStopId: to.id,
-                mode: 'train' as const,
+                mode: mode as 'car' | 'walk',
                 distanceKm: 0,
                 durationMinutes: 0,
-                costJPY: 0,
-                routeGeometry: [
-                  [from.lat, from.lng] as [number, number],
-                  [to.lat, to.lng] as [number, number],
-                ],
                 notes: '',
               };
             }
@@ -147,12 +150,30 @@ export default function TripDashboard() {
     []
   );
 
+  const saveStop = useCallback(
+    async (updatedStop: Stop) => {
+      if (!trip) return;
+      const updatedStops = trip.stops.map((s) =>
+        s.id === updatedStop.id ? updatedStop : s
+      );
+      await saveTrip({ ...trip, stops: updatedStops });
+    },
+    [trip, saveTrip]
+  );
+
   const addStop = useCallback(
     async (stopData: Stop) => {
       if (!trip) return;
-      const newStop = { ...stopData, order: trip.stops.length };
+      const newStop = {
+        ...stopData,
+        order: trip.stops.length,
+        accommodations: stopData.accommodations || [],
+      };
       const updatedStops = [...trip.stops, newStop];
-      const transportSegments = await calculateRoutes(updatedStops);
+      const transportSegments = await calculateRoutes(
+        updatedStops,
+        trip.transportSegments
+      );
       await saveTrip({
         ...trip,
         stops: updatedStops,
@@ -180,7 +201,10 @@ export default function TripDashboard() {
       const updatedStops = trip.stops.map((s) =>
         s.id === updatedStop.id ? updatedStop : s
       );
-      const transportSegments = await calculateRoutes(updatedStops);
+      const transportSegments = await calculateRoutes(
+        updatedStops,
+        trip.transportSegments
+      );
       await saveTrip({
         ...trip,
         stops: updatedStops,
@@ -208,7 +232,10 @@ export default function TripDashboard() {
       const target = trip.stops.find((s) => s.id === stopId);
       if (!target || !window.confirm(`Delete "${target.name}"?`)) return;
       const updatedStops = trip.stops.filter((s) => s.id !== stopId);
-      const transportSegments = await calculateRoutes(updatedStops);
+      const transportSegments = await calculateRoutes(
+        updatedStops,
+        trip.transportSegments
+      );
       await saveTrip({
         ...trip,
         stops: updatedStops,
@@ -232,10 +259,43 @@ export default function TripDashboard() {
   const updateTransportSegment = useCallback(
     async (updated: TransportSegment) => {
       if (!trip) return;
+
+      // Re-fetch routing data for the new mode
+      const fromStop = trip.stops.find((s) => s.id === updated.fromStopId);
+      const toStop = trip.stops.find((s) => s.id === updated.toStopId);
+
+      let finalSegment = updated;
+      if (fromStop && toStop) {
+        try {
+          const mode =
+            updated.mode === 'car' || updated.mode === 'walk'
+              ? updated.mode
+              : 'car';
+          const params = new URLSearchParams({
+            from_lat: String(fromStop.lat),
+            from_lng: String(fromStop.lng),
+            to_lat: String(toStop.lat),
+            to_lng: String(toStop.lng),
+            mode,
+          });
+          const res = await fetch(`/api/routing?${params}`);
+          if (res.ok) {
+            const data = await res.json();
+            finalSegment = {
+              ...updated,
+              distanceKm: data.distanceKm || 0,
+              durationMinutes: data.durationMinutes || 0,
+            };
+          }
+        } catch {
+          // keep existing values
+        }
+      }
+
       await saveTrip({
         ...trip,
         transportSegments: trip.transportSegments.map((seg) =>
-          seg.id === updated.id ? updated : seg
+          seg.id === finalSegment.id ? finalSegment : seg
         ),
       });
     },
@@ -412,8 +472,9 @@ export default function TripDashboard() {
           </h1>
           <p className="text-[12px] text-neutral-500 mt-0.5">
             {formatDateRange(trip.startDate, trip.endDate)} &middot;{' '}
-            {trip.stops.length} stop{trip.stops.length !== 1 ? 's' : ''} &middot;{' '}
-            {trip.members.length} member{trip.members.length !== 1 ? 's' : ''}
+            {trip.stops.length} stop{trip.stops.length !== 1 ? 's' : ''}{' '}
+            &middot; {trip.members.length} member
+            {trip.members.length !== 1 ? 's' : ''}
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -435,7 +496,7 @@ export default function TripDashboard() {
               className="px-3 py-[7px] border border-neutral-200 hover:border-neutral-300 rounded-lg text-[12px] font-medium text-neutral-600 transition-all duration-150"
               title="Open full route in Google Maps"
             >
-              Google Maps
+              Map
             </button>
           )}
           <button
@@ -460,12 +521,16 @@ export default function TripDashboard() {
         </div>
 
         {/* Timeline */}
-        <div className="flex-1 overflow-y-auto timeline-scroll" style={{ background: 'var(--bg-secondary)' }}>
+        <div
+          className="flex-1 overflow-y-auto timeline-scroll"
+          style={{ background: 'var(--bg-secondary)' }}
+        >
           <Timeline
             stops={sortedStops}
             transportSegments={trip.transportSegments}
             selectedStopId={selectedStopId}
             onStopClick={setSelectedStopId}
+            onSaveStop={saveStop}
             onEditStop={(stop) => {
               setEditingStop(stop);
               setShowAddStop(true);

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, FormEvent } from 'react';
-import type { Stop, StopCategory } from '@/lib/types';
+import type { Stop, StopCategory, Activity, Accommodation } from '@/lib/types';
 import { CATEGORY_CONFIG } from '@/lib/types';
 
 interface AddStopModalProps {
@@ -21,18 +21,8 @@ interface GeoResult {
 }
 
 const CATEGORIES: StopCategory[] = [
-  'temple',
-  'shrine',
-  'museum',
-  'park',
-  'food',
-  'shopping',
-  'onsen',
-  'entertainment',
-  'nature',
-  'accommodation',
-  'transport-hub',
-  'other',
+  'temple', 'shrine', 'museum', 'park', 'food', 'shopping',
+  'onsen', 'entertainment', 'nature', 'accommodation', 'transport-hub', 'other',
 ];
 
 function timeDiffMinutes(arrival: string, departure: string): number {
@@ -69,6 +59,16 @@ export default function AddStopModal({
   const [costJPY, setCostJPY] = useState(0);
   const [notes, setNotes] = useState('');
 
+  const [accommodations, setAccommodations] = useState<Accommodation[]>([]);
+  const [addingAccom, setAddingAccom] = useState(false);
+  const [newAccomName, setNewAccomName] = useState('');
+  const [newAccomCost, setNewAccomCost] = useState(0);
+
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [addingActivity, setAddingActivity] = useState(false);
+  const [newActivityName, setNewActivityName] = useState('');
+  const [newActivityCost, setNewActivityCost] = useState(0);
+
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -82,6 +82,8 @@ export default function AddStopModal({
       setDepartureTime(editingStop.departureTime || '11:00');
       setCostJPY(editingStop.costJPY || 0);
       setNotes(editingStop.notes || '');
+      setAccommodations(editingStop.accommodations || []);
+      setActivities(editingStop.activities || []);
       setSearchQuery('');
     } else {
       setName('');
@@ -93,10 +95,14 @@ export default function AddStopModal({
       setDepartureTime('11:00');
       setCostJPY(0);
       setNotes('');
+      setAccommodations([]);
+      setActivities([]);
       setSearchQuery('');
     }
     setSearchResults([]);
     setShowResults(false);
+    setAddingAccom(false);
+    setAddingActivity(false);
   }, [editingStop, isOpen]);
 
   useEffect(() => {
@@ -137,6 +143,36 @@ export default function AddStopModal({
     setSearchQuery('');
   }
 
+  function handleAddAccom() {
+    if (!newAccomName.trim()) return;
+    setAccommodations((prev) => [
+      ...prev,
+      { id: crypto.randomUUID(), name: newAccomName.trim(), costJPY: newAccomCost || 0 },
+    ]);
+    setNewAccomName('');
+    setNewAccomCost(0);
+    setAddingAccom(false);
+  }
+
+  function handleRemoveAccom(id: string) {
+    setAccommodations((prev) => prev.filter((a) => a.id !== id));
+  }
+
+  function handleAddActivity() {
+    if (!newActivityName.trim()) return;
+    setActivities((prev) => [
+      ...prev,
+      { id: crypto.randomUUID(), name: newActivityName.trim(), costJPY: newActivityCost || 0 },
+    ]);
+    setNewActivityName('');
+    setNewActivityCost(0);
+    setAddingActivity(false);
+  }
+
+  function handleRemoveActivity(id: string) {
+    setActivities((prev) => prev.filter((a) => a.id !== id));
+  }
+
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!name.trim() || lat === null || lng === null) return;
@@ -156,7 +192,8 @@ export default function AddStopModal({
       durationMinutes: duration > 0 ? duration : 0,
       costJPY,
       notes,
-      activities: editingStop?.activities || [],
+      accommodations,
+      activities,
       order: editingStop?.order ?? existingStopsCount,
       addedBy: 'Me',
       createdAt: editingStop?.createdAt || new Date().toISOString(),
@@ -273,11 +310,14 @@ export default function AddStopModal({
               onChange={(e) => setCategory(e.target.value as StopCategory)}
               className={inputClass}
             >
-              {CATEGORIES.map((cat) => (
-                <option key={cat} value={cat}>
-                  {CATEGORY_CONFIG[cat].icon} {CATEGORY_CONFIG[cat].label}
-                </option>
-              ))}
+              {CATEGORIES.map((cat) => {
+                const cfg = CATEGORY_CONFIG[cat];
+                return (
+                  <option key={cat} value={cat}>
+                    {cfg.letter} — {cfg.label}
+                  </option>
+                );
+              })}
             </select>
           </div>
 
@@ -326,7 +366,7 @@ export default function AddStopModal({
           {/* Cost */}
           <div>
             <label htmlFor="stop-cost" className={labelClass}>
-              Cost (¥)
+              Entry Cost (JPY)
             </label>
             <input
               id="stop-cost"
@@ -336,6 +376,172 @@ export default function AddStopModal({
               min={0}
               className={inputClass}
             />
+          </div>
+
+          {/* STAYS section */}
+          <div>
+            <p className={labelClass}>Stays</p>
+            {accommodations.map((accom) => (
+              <div
+                key={accom.id}
+                className="flex items-center justify-between py-1"
+              >
+                <span className="text-[13px] text-neutral-900 truncate">
+                  {accom.name}
+                </span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-[12px] font-data text-neutral-500">
+                    &yen;{accom.costJPY.toLocaleString()}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveAccom(accom.id)}
+                    className="text-neutral-400 hover:text-red-500 text-[14px] leading-none transition-colors duration-150"
+                  >
+                    &times;
+                  </button>
+                </div>
+              </div>
+            ))}
+            {addingAccom ? (
+              <div className="flex items-center gap-1.5 mt-1">
+                <input
+                  type="text"
+                  value={newAccomName}
+                  onChange={(e) => setNewAccomName(e.target.value)}
+                  placeholder="Name"
+                  className="flex-1 px-2 py-1.5 bg-neutral-50 border border-neutral-200 rounded text-[13px] text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:border-neutral-400 transition-[border-color] duration-150"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddAccom();
+                    }
+                  }}
+                />
+                <div className="flex items-center gap-0.5">
+                  <span className="text-[12px] text-neutral-400">&yen;</span>
+                  <input
+                    type="number"
+                    value={newAccomCost}
+                    onChange={(e) =>
+                      setNewAccomCost(parseInt(e.target.value) || 0)
+                    }
+                    className="w-20 px-2 py-1.5 bg-neutral-50 border border-neutral-200 rounded text-[13px] font-data text-neutral-900 focus:outline-none focus:border-neutral-400 transition-[border-color] duration-150"
+                    min={0}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleAddAccom}
+                  className="text-neutral-600 hover:text-neutral-900 text-[14px] leading-none px-1 transition-colors duration-150"
+                >
+                  &#10003;
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAddingAccom(false);
+                    setNewAccomName('');
+                    setNewAccomCost(0);
+                  }}
+                  className="text-neutral-400 hover:text-neutral-600 text-[14px] leading-none px-1 transition-colors duration-150"
+                >
+                  &times;
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setAddingAccom(true)}
+                className="text-[12px] text-neutral-400 hover:text-neutral-900 mt-1 transition-colors duration-150"
+              >
+                + Add
+              </button>
+            )}
+          </div>
+
+          {/* ACTIVITIES section */}
+          <div>
+            <p className={labelClass}>Activities</p>
+            {activities.map((act) => (
+              <div
+                key={act.id}
+                className="flex items-center justify-between py-1"
+              >
+                <span className="text-[13px] text-neutral-900 truncate">
+                  {act.name}
+                </span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-[12px] font-data text-neutral-500">
+                    &yen;{act.costJPY.toLocaleString()}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveActivity(act.id)}
+                    className="text-neutral-400 hover:text-red-500 text-[14px] leading-none transition-colors duration-150"
+                  >
+                    &times;
+                  </button>
+                </div>
+              </div>
+            ))}
+            {addingActivity ? (
+              <div className="flex items-center gap-1.5 mt-1">
+                <input
+                  type="text"
+                  value={newActivityName}
+                  onChange={(e) => setNewActivityName(e.target.value)}
+                  placeholder="Name"
+                  className="flex-1 px-2 py-1.5 bg-neutral-50 border border-neutral-200 rounded text-[13px] text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:border-neutral-400 transition-[border-color] duration-150"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddActivity();
+                    }
+                  }}
+                />
+                <div className="flex items-center gap-0.5">
+                  <span className="text-[12px] text-neutral-400">&yen;</span>
+                  <input
+                    type="number"
+                    value={newActivityCost}
+                    onChange={(e) =>
+                      setNewActivityCost(parseInt(e.target.value) || 0)
+                    }
+                    className="w-20 px-2 py-1.5 bg-neutral-50 border border-neutral-200 rounded text-[13px] font-data text-neutral-900 focus:outline-none focus:border-neutral-400 transition-[border-color] duration-150"
+                    min={0}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleAddActivity}
+                  className="text-neutral-600 hover:text-neutral-900 text-[14px] leading-none px-1 transition-colors duration-150"
+                >
+                  &#10003;
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAddingActivity(false);
+                    setNewActivityName('');
+                    setNewActivityCost(0);
+                  }}
+                  className="text-neutral-400 hover:text-neutral-600 text-[14px] leading-none px-1 transition-colors duration-150"
+                >
+                  &times;
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setAddingActivity(true)}
+                className="text-[12px] text-neutral-400 hover:text-neutral-900 mt-1 transition-colors duration-150"
+              >
+                + Add
+              </button>
+            )}
           </div>
 
           {/* Notes */}

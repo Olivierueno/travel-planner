@@ -9,6 +9,7 @@ interface TimelineProps {
   transportSegments: TransportSegment[];
   selectedStopId: string | null;
   onStopClick: (stopId: string) => void;
+  onSaveStop: (stop: Stop) => void;
   onEditStop: (stop: Stop) => void;
   onDeleteStop: (stopId: string) => void;
   onTransportEdit: (segment: TransportSegment) => void;
@@ -19,18 +20,8 @@ function formatDateHeader(dateStr: string, tripStartDate?: string): string {
   const date = new Date(dateStr + 'T00:00:00');
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const monthNames = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec',
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
   ];
 
   let prefix = '';
@@ -50,6 +41,7 @@ export default function Timeline({
   transportSegments,
   selectedStopId,
   onStopClick,
+  onSaveStop,
   onEditStop,
   onDeleteStop,
   onTransportEdit,
@@ -109,7 +101,10 @@ export default function Timeline({
     <div className="p-4">
       {sortedDates.map((dateKey) => (
         <div key={dateKey} className="mb-6">
-          <div className="sticky top-0 z-10 py-2 mb-3" style={{ background: 'var(--bg-secondary)' }}>
+          <div
+            className="sticky top-0 z-10 py-2 mb-3"
+            style={{ background: 'var(--bg-secondary)' }}
+          >
             <h2 className="text-[11px] uppercase tracking-[1.5px] text-neutral-500 font-normal">
               {dateKey === 'unscheduled'
                 ? 'Unscheduled'
@@ -135,6 +130,7 @@ export default function Timeline({
                     index={globalIdx + 1}
                     isSelected={selectedStopId === stop.id}
                     onStopClick={() => onStopClick(stop.id)}
+                    onSave={onSaveStop}
                     onEdit={() => onEditStop(stop)}
                     onDelete={() => onDeleteStop(stop.id)}
                   />
