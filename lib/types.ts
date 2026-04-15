@@ -74,7 +74,7 @@ export interface TransportSegment {
   notes: string;
 }
 
-export type TransportMode = 'car' | 'walk';
+export type TransportMode = 'car' | 'walk' | 'train';
 
 export interface ChangelogEntry {
   id: string;
@@ -104,6 +104,7 @@ export const CATEGORY_CONFIG: Record<
 
 export const TRANSPORT_CONFIG: Record<TransportMode, { label: string }> = {
   car: { label: 'Car' },
+  train: { label: 'Train' },
   walk: { label: 'Walk' },
 };
 

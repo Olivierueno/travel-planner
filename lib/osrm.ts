@@ -10,15 +10,19 @@ export async function getRoute(
   fromLng: number,
   toLat: number,
   toLng: number,
-  mode: 'car' | 'walk' = 'car'
+  mode: 'car' | 'walk' | 'train' = 'car'
 ): Promise<RouteResult> {
   const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY;
   if (!key) {
     throw new Error('Google Maps API key not configured');
   }
 
-  const gmode = mode === 'walk' ? 'walking' : 'driving';
-  const url = `${GMAPS_BASE}?origins=${fromLat},${fromLng}&destinations=${toLat},${toLng}&mode=${gmode}&key=${key}`;
+  const gmodeMap = { car: 'driving', walk: 'walking', train: 'transit' } as const;
+  const gmode = gmodeMap[mode] || 'driving';
+  // departure_time=now gives traffic-aware duration and is required for transit
+  const needsDeparture = gmode === 'driving' || gmode === 'transit';
+  const traffic = needsDeparture ? '&departure_time=now' : '';
+  const url = `${GMAPS_BASE}?origins=${fromLat},${fromLng}&destinations=${toLat},${toLng}&mode=${gmode}${traffic}&key=${key}`;
 
   const res = await fetch(url);
   if (!res.ok) {
@@ -36,8 +40,11 @@ export async function getRoute(
     throw new Error(`No route found: ${element?.status || 'unknown'}`);
   }
 
+  // Use traffic-aware duration when available, fall back to standard
+  const durationSec = element.duration_in_traffic?.value || element.duration.value;
+
   return {
     distanceKm: Math.round(element.distance.value / 100) / 10,
-    durationMinutes: Math.round(element.duration.value / 60),
+    durationMinutes: Math.round(durationSec / 60),
   };
 }

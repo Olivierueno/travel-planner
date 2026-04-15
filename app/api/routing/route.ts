@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
   const fromLng = parseFloat(searchParams.get('from_lng') || '');
   const toLat = parseFloat(searchParams.get('to_lat') || '');
   const toLng = parseFloat(searchParams.get('to_lng') || '');
-  const mode = (searchParams.get('mode') || 'car') as 'car' | 'walk';
+  const mode = (searchParams.get('mode') || 'car') as 'car' | 'walk' | 'train';
 
   if ([fromLat, fromLng, toLat, toLng].some(isNaN)) {
     return NextResponse.json(

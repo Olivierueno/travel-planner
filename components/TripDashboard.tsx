@@ -104,7 +104,7 @@ export default function TripDashboard() {
               (seg) => seg.fromStopId === from.id && seg.toStopId === to.id
             );
             const mode =
-              existing?.mode === 'car' || existing?.mode === 'walk'
+              existing?.mode === 'car' || existing?.mode === 'walk' || existing?.mode === 'train'
                 ? existing.mode
                 : 'car';
 
@@ -266,7 +266,7 @@ export default function TripDashboard() {
       if (fromStop && toStop) {
         try {
           const mode =
-            updated.mode === 'car' || updated.mode === 'walk'
+            updated.mode === 'car' || updated.mode === 'walk' || updated.mode === 'train'
               ? updated.mode
               : 'car';
           const params = new URLSearchParams({

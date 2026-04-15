@@ -17,10 +17,10 @@ function formatDuration(minutes: number): string {
   return `${minutes}m`;
 }
 
-const MODES: TransportMode[] = ['car', 'walk'];
+const MODES: TransportMode[] = ['car', 'train', 'walk'];
 
 function normalizeMode(mode: string): TransportMode {
-  if (mode === 'car' || mode === 'walk') return mode;
+  if (mode === 'car' || mode === 'walk' || mode === 'train') return mode;
   return 'car';
 }
 
@@ -57,7 +57,7 @@ export default function TransportSegmentCard({
                   : 'bg-transparent text-neutral-400 hover:text-neutral-600'
               }`}
             >
-              {mode === 'car' ? 'Car' : 'Walk'}
+              {mode === 'car' ? 'Car' : mode === 'train' ? 'Train' : 'Walk'}
             </button>
           ))}
         </div>
