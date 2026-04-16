@@ -552,25 +552,31 @@ export default function TripDashboard() {
           {sortedStops.length >= 2 && (
             <button
               onClick={openInGoogleMaps}
-              className="px-3 py-[7px] border border-neutral-200 hover:border-neutral-300 rounded-lg text-[12px] font-medium text-neutral-600 transition-all duration-150"
-              title="Open full route in Google Maps"
+              className="w-[30px] h-[30px] border border-neutral-200 hover:border-neutral-300 rounded-lg flex items-center justify-center text-neutral-500 hover:text-neutral-900 transition-all duration-150"
+              title="Open in Google Maps"
             >
-              Map
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M12 1.586l-4 4v12.828l4-4V1.586zM3.707 3.293A1 1 0 002 4v10a1 1 0 00.293.707L6 18.414V5.586L3.707 3.293zM17.707 5.293L14 1.586v12.828l2.293 2.293A1 1 0 0018 16V6a1 1 0 00-.293-.707z" clipRule="evenodd" />
+              </svg>
             </button>
           )}
           <button
             onClick={exportPDF}
-            className="px-3 py-[7px] border border-neutral-200 hover:border-neutral-300 rounded-lg text-[12px] font-medium text-neutral-600 transition-all duration-150"
-            title="Print trip itinerary"
+            className="w-[30px] h-[30px] border border-neutral-200 hover:border-neutral-300 rounded-lg flex items-center justify-center text-neutral-500 hover:text-neutral-900 transition-all duration-150"
+            title="Print itinerary"
           >
-            Print
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a2 2 0 002 2h6a2 2 0 002-2v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm0 8H7v4h6v-4z" clipRule="evenodd" />
+            </svg>
           </button>
           <button
             onClick={exportJSON}
-            className="px-3 py-[7px] border border-neutral-200 hover:border-neutral-300 rounded-lg text-[12px] font-medium text-neutral-600 transition-all duration-150"
-            title="Download trip data as JSON"
+            className="w-[30px] h-[30px] border border-neutral-200 hover:border-neutral-300 rounded-lg flex items-center justify-center text-neutral-500 hover:text-neutral-900 transition-all duration-150"
+            title="Download JSON"
           >
-            JSON
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+            </svg>
           </button>
           <button
             onClick={() => setShowSettings(!showSettings)}
