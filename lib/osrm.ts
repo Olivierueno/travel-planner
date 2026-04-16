@@ -34,7 +34,7 @@ export async function getRoute(
 
   const data = await res.json();
   if (data.status !== 'OK') {
-    throw new Error(`Google Maps API: ${data.status} - ${data.error_message || 'no detail'}`);
+    throw new Error(`Google Maps API: ${data.status}`);
   }
 
   const element = data.rows?.[0]?.elements?.[0];
