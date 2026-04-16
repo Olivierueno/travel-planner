@@ -60,8 +60,9 @@ function CompactDisplay({
   const acts: Activity[] = stop.activities || [];
   const cost = stopTotal(stop);
 
-  const [imageLoaded, setImageLoaded] = useState(false);
-  const imageSrc = stop.name ? `/api/image?q=${encodeURIComponent(stop.name)}` : null;
+  // Images disabled for now
+  // const [imageLoaded, setImageLoaded] = useState(false);
+  // const imageSrc = stop.name ? `/api/image?q=${encodeURIComponent(stop.name)}` : null;
 
   const [addingAccom, setAddingAccom] = useState(false);
   const [accomName, setAccomName] = useState('');
@@ -114,20 +115,7 @@ function CompactDisplay({
 
   return (
     <>
-      {/* Image banner */}
-      {imageSrc && (
-        <div className={`-mx-3.5 -mt-3 mb-2 rounded-t-[9px] relative overflow-hidden ${imageLoaded ? 'h-24' : 'h-0'}`}>
-          <img
-            src={imageSrc}
-            alt=""
-            className="absolute inset-0 w-full h-full object-cover"
-            loading="lazy"
-            onLoad={() => setImageLoaded(true)}
-            onError={() => setImageLoaded(false)}
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-        </div>
-      )}
+      {/* Image banner (disabled) */}
       {/* Header */}
       <div className="flex items-center justify-between gap-2 cursor-pointer" onClick={onToggleExpand}>
         <h3 className="text-[14px] font-semibold text-neutral-900 truncate">{stop.name}</h3>
