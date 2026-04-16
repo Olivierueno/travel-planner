@@ -37,7 +37,7 @@ export async function getRoute(
 
   const element = data.rows?.[0]?.elements?.[0];
 
-  // Transit may return ZERO_RESULTS — fall back to driving
+  // Transit may return ZERO_RESULTS - fall back to driving
   if ((!element || element.status !== 'OK') && mode === 'train') {
     return getRoute(fromLat, fromLng, toLat, toLng, 'car');
   }

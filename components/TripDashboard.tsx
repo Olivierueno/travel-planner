@@ -6,7 +6,6 @@ import type { Trip, Stop, TransportSegment } from '@/lib/types';
 import { generatePrintHTML } from '@/lib/export-pdf';
 import { CURRENCIES, autoCalculateArrivals } from '@/lib/types';
 import Timeline from './Timeline';
-import Footer from './Footer';
 
 const Map = dynamic(() => import('./MapInner'), {
   ssr: false,
@@ -626,7 +625,7 @@ export default function TripDashboard() {
                   className="w-full px-2.5 py-1.5 bg-neutral-50 border border-neutral-200 rounded-lg text-[13px] text-neutral-900 focus:outline-none focus:border-neutral-400 transition-[border-color] duration-150"
                 >
                   {CURRENCIES.map(c => (
-                    <option key={c.code} value={c.code}>{c.symbol} {c.code} — {c.label}</option>
+                    <option key={c.code} value={c.code}>{c.symbol} {c.code} - {c.label}</option>
                   ))}
                 </select>
               </div>
@@ -670,6 +669,31 @@ export default function TripDashboard() {
                 </div>
               </div>
             </div>
+
+              {/* Delete trip */}
+              <div className="border-t border-neutral-100 pt-3 mt-3">
+                <button
+                  onClick={async () => {
+                    if (!window.confirm('Delete this entire trip? This cannot be undone.')) return;
+                    setShowSettings(false);
+                    await fetch('/api/trip', {
+                      method: 'PUT',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ trip: null }),
+                    });
+                    setTrip(null);
+                  }}
+                  className="text-[12px] text-red-500 hover:text-red-600 transition-colors duration-150"
+                >
+                  Delete this trip
+                </button>
+              </div>
+
+              <div className="border-t border-neutral-100 pt-3 mt-3">
+                <p className="text-[10px] text-neutral-400 leading-relaxed">
+                  Travel Planner by UENO Systems. Usage-based pricing. You pay only for third-party services consumed plus a small service fee. Data stored securely. No personal data collected or shared. Provided as-is without warranty.
+                </p>
+              </div>
           </div>
         </div>
       )}
@@ -710,7 +734,12 @@ export default function TripDashboard() {
           />
         </div>
       </div>
-      <Footer />
+
+      {/* Footer bar */}
+      <div className="bg-white border-t border-neutral-200 px-5 py-2 shrink-0 flex items-center justify-between text-[10px] text-neutral-400">
+        <span>Travel Planner by UENO Systems</span>
+        <span>Usage-based pricing &middot; No data collected &middot; Provided &ldquo;as is&rdquo;</span>
+      </div>
     </div>
   );
 }

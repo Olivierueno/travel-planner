@@ -9,7 +9,16 @@ export async function GET() {
 }
 
 export async function PUT(request: NextRequest) {
-  const { trip } = (await request.json()) as { trip: Trip };
+  const { trip } = (await request.json()) as { trip: Trip | null };
+  if (trip === null) {
+    // Delete trip by saving empty state
+    const { writeFile, mkdir } = await import('fs/promises');
+    const { join } = await import('path');
+    const dir = join(process.cwd(), 'data');
+    await mkdir(dir, { recursive: true });
+    await writeFile(join(dir, 'trip.json'), 'null');
+    return NextResponse.json({ trip: null });
+  }
   const saved = await saveTrip(trip);
   return NextResponse.json({ trip: saved });
 }

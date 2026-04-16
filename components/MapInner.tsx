@@ -13,7 +13,7 @@ interface MapProps {
 function buildEmbedUrl(stops: Stop[]): string {
   const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY;
 
-  // No API key — show a fallback message
+  // No API key - show a fallback message
   if (!key) return '';
 
   const base = 'https://www.google.com/maps/embed/v1';
