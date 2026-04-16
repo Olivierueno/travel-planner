@@ -528,7 +528,11 @@ export default function TripDashboard() {
       {/* Header */}
       <header className="bg-white border-b border-neutral-200 px-5 py-3 flex items-center justify-between shrink-0">
         <div className="min-w-0">
-          <h1 className="text-[15px] font-semibold text-neutral-900 truncate">
+          <h1 className="text-[15px] font-semibold text-neutral-900 truncate flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" viewBox="0 0 32 32">
+              <path d="M4 4 L28 16 L4 28 L8 16 Z" fill="#171717"/>
+              <path d="M8 16 L28 16" stroke="#ffffff" strokeWidth="1.5"/>
+            </svg>
             {trip.title}
           </h1>
           <p className="text-[12px] text-neutral-500 mt-0.5">
