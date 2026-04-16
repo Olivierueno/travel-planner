@@ -1,15 +1,21 @@
+import { Redis } from '@upstash/redis';
 import type { Trip } from './types';
 
 const TRIP_KEY = 'trip:data';
 
-function useKV(): boolean {
-  return !!(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN);
+function getRedis(): Redis | null {
+  const url = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (url && token) {
+    return new Redis({ url, token });
+  }
+  return null;
 }
 
 export async function getTrip(): Promise<Trip | null> {
-  if (useKV()) {
-    const { kv } = await import('@vercel/kv');
-    return kv.get<Trip>(TRIP_KEY);
+  const redis = getRedis();
+  if (redis) {
+    return redis.get<Trip>(TRIP_KEY);
   }
 
   const { readFile } = await import('fs/promises');
@@ -28,9 +34,9 @@ export async function getTrip(): Promise<Trip | null> {
 export async function saveTrip(trip: Trip): Promise<Trip> {
   trip.updatedAt = new Date().toISOString();
 
-  if (useKV()) {
-    const { kv } = await import('@vercel/kv');
-    await kv.set(TRIP_KEY, trip);
+  const redis = getRedis();
+  if (redis) {
+    await redis.set(TRIP_KEY, trip);
     return trip;
   }
 
