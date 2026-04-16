@@ -5,6 +5,7 @@ import type { Stop, TransportSegment } from '@/lib/types';
 import { stopTotal } from '@/lib/types';
 import StopCard from './StopCard';
 import TransportSegmentCard from './TransportSegment';
+import Footer from './Footer';
 
 interface TimelineProps {
   stops: Stop[];
@@ -167,22 +168,27 @@ export default function Timeline({
       })}
 
       {/* New stop inline card */}
-      {isAddingNew && (
-        <div ref={newStopRef} className="mt-3">
-          <StopCard
-            stop={null}
-            index={stops.length + 1}
-            total={stops.length}
-            isExpanded={true}
-            onToggleExpand={() => {}}
-            onSave={onAddNewStop}
-            onDelete={() => {}}
-            onMove={() => {}}
-            onCancel={onCancelAddStop}
-            currencySymbol={currencySymbol}
-          />
-        </div>
-      )}
+      {isAddingNew && (() => {
+        const lastStop = stops.length > 0 ? stops[stops.length - 1] : null;
+        return (
+          <div ref={newStopRef} className="mt-3">
+            <StopCard
+              stop={null}
+              index={stops.length + 1}
+              total={stops.length}
+              isExpanded={true}
+              onToggleExpand={() => {}}
+              onSave={onAddNewStop}
+              onDelete={() => {}}
+              onMove={() => {}}
+              onCancel={onCancelAddStop}
+              currencySymbol={currencySymbol}
+              defaultArrivalDate={lastStop?.departureDate || lastStop?.arrivalDate || ''}
+              defaultArrivalTime={lastStop?.departureTime || '09:00'}
+            />
+          </div>
+        );
+      })()}
 
       {/* Add stop button */}
       {!isAddingNew && (
@@ -193,6 +199,11 @@ export default function Timeline({
           + Add Stop
         </button>
       )}
+
+      {/* Footer */}
+      <div className="mt-8">
+        <Footer />
+      </div>
     </div>
   );
 }

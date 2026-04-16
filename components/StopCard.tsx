@@ -16,6 +16,8 @@ interface StopCardProps {
   onMove: (direction: 'up' | 'down') => void;
   onCancel: () => void;
   currencySymbol: string;
+  defaultArrivalDate?: string;
+  defaultArrivalTime?: string;
 }
 
 interface GeoResult {
@@ -57,6 +59,9 @@ function CompactDisplay({
   const accoms: Accommodation[] = stop.accommodations || [];
   const acts: Activity[] = stop.activities || [];
   const cost = stopTotal(stop);
+
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const imageSrc = stop.name ? `/api/image?q=${encodeURIComponent(stop.name)}` : null;
 
   const [addingAccom, setAddingAccom] = useState(false);
   const [accomName, setAccomName] = useState('');
@@ -109,6 +114,20 @@ function CompactDisplay({
 
   return (
     <>
+      {/* Image banner */}
+      {imageSrc && (
+        <div className={`-mx-3.5 -mt-3 mb-2 rounded-t-[9px] relative overflow-hidden ${imageLoaded ? 'h-24' : 'h-0'}`}>
+          <img
+            src={imageSrc}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover"
+            loading="lazy"
+            onLoad={() => setImageLoaded(true)}
+            onError={() => setImageLoaded(false)}
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-center justify-between gap-2 cursor-pointer" onClick={onToggleExpand}>
         <h3 className="text-[14px] font-semibold text-neutral-900 truncate">{stop.name}</h3>
@@ -225,6 +244,8 @@ function ExpandedForm({
   onCancel,
   autoFocusSearch,
   currencySymbol,
+  defaultArrivalDate,
+  defaultArrivalTime,
 }: {
   stop: Stop | null;
   index: number;
@@ -234,6 +255,8 @@ function ExpandedForm({
   onCancel: () => void;
   autoFocusSearch: boolean;
   currencySymbol: string;
+  defaultArrivalDate?: string;
+  defaultArrivalTime?: string;
 }) {
   const isNew = stop === null;
 
@@ -245,9 +268,11 @@ function ExpandedForm({
   const [name, setName] = useState(stop?.name || '');
   const [lat, setLat] = useState<number | null>(stop?.lat ?? null);
   const [lng, setLng] = useState<number | null>(stop?.lng ?? null);
-  const [arrivalDate, setArrivalDate] = useState(stop?.arrivalDate || (stop as any)?.date || '');
-  const [arrivalTime, setArrivalTime] = useState(stop?.arrivalTime || '14:00');
-  const [departureDate, setDepartureDate] = useState(stop?.departureDate || stop?.arrivalDate || (stop as any)?.date || '');
+  const initArrDate = stop?.arrivalDate || (stop as any)?.date || defaultArrivalDate || '';
+  const initArrTime = stop?.arrivalTime || defaultArrivalTime || '14:00';
+  const [arrivalDate, setArrivalDate] = useState(initArrDate);
+  const [arrivalTime, setArrivalTime] = useState(initArrTime);
+  const [departureDate, setDepartureDate] = useState(stop?.departureDate || initArrDate);
   const [departureTime, setDepartureTime] = useState(stop?.departureTime || '09:00');
   const [departureDateTouched, setDepartureDateTouched] = useState(!!stop?.departureDate);
   const [costJPY, setCostJPY] = useState(stop?.costJPY || 0);
@@ -630,6 +655,8 @@ export default function StopCard({
   onMove,
   onCancel,
   currencySymbol,
+  defaultArrivalDate,
+  defaultArrivalTime,
 }: StopCardProps) {
   return (
     <div
@@ -651,6 +678,8 @@ export default function StopCard({
           onCancel={stop === null ? onCancel : onToggleExpand}
           autoFocusSearch={stop === null}
           currencySymbol={currencySymbol}
+          defaultArrivalDate={defaultArrivalDate}
+          defaultArrivalTime={defaultArrivalTime}
         />
       ) : (
         <CompactDisplay
