@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback, FormEvent } from 'react';
 import dynamic from 'next/dynamic';
 import type { Trip, Stop, TransportSegment } from '@/lib/types';
 import { generatePrintHTML } from '@/lib/export-pdf';
-import { CURRENCIES } from '@/lib/types';
+import { CURRENCIES, autoCalculateArrivals } from '@/lib/types';
 import Timeline from './Timeline';
 
 const Map = dynamic(() => import('./MapInner'), {
@@ -171,9 +171,10 @@ export default function TripDashboard() {
         updatedStops,
         trip.transportSegments
       );
+      const stopsWithArrivals = autoCalculateArrivals(updatedStops, transportSegments);
       await saveTrip({
         ...trip,
-        stops: updatedStops,
+        stops: stopsWithArrivals,
         transportSegments,
         changelog: [
           ...trip.changelog,
@@ -204,9 +205,10 @@ export default function TripDashboard() {
         updatedStops,
         trip.transportSegments
       );
+      const stopsWithArrivals = autoCalculateArrivals(updatedStops, transportSegments);
       await saveTrip({
         ...trip,
-        stops: updatedStops,
+        stops: stopsWithArrivals,
         transportSegments,
         changelog: [
           ...trip.changelog,
@@ -234,9 +236,10 @@ export default function TripDashboard() {
         updatedStops,
         trip.transportSegments
       );
+      const stopsWithArrivals = autoCalculateArrivals(updatedStops, transportSegments);
       await saveTrip({
         ...trip,
-        stops: updatedStops,
+        stops: stopsWithArrivals,
         transportSegments,
         changelog: [
           ...trip.changelog,
@@ -336,7 +339,8 @@ export default function TripDashboard() {
       sorted[swapIdx] = { ...sorted[swapIdx], order: orderA };
 
       const segments = await calculateRoutes(sorted);
-      await saveTrip({ ...trip, stops: sorted, transportSegments: segments });
+      const stopsWithArrivals = autoCalculateArrivals(sorted, segments);
+      await saveTrip({ ...trip, stops: stopsWithArrivals, transportSegments: segments });
     },
     [trip, calculateRoutes, saveTrip]
   );
@@ -540,9 +544,10 @@ export default function TripDashboard() {
           )}
           <button
             onClick={startAddStop}
-            className="px-4 py-[7px] bg-neutral-900 text-white rounded-lg text-[12px] font-medium hover:opacity-80 transition-opacity duration-150"
+            className="w-[30px] h-[30px] bg-neutral-900 text-white rounded-lg text-[16px] leading-none font-light flex items-center justify-center hover:opacity-80 transition-opacity duration-150"
+            title="Add Stop"
           >
-            + Add Stop
+            +
           </button>
           {sortedStops.length >= 2 && (
             <button
@@ -580,66 +585,82 @@ export default function TripDashboard() {
       </header>
 
       {showSettings && (
-        <div className="bg-white border-b border-neutral-200 px-5 py-4 expand-content">
-          <div className="max-w-md space-y-3">
-            <p className="text-[10px] uppercase tracking-[1.2px] text-neutral-400 mb-2">Settings</p>
-
-            {/* Currency */}
-            <div className="flex items-center justify-between">
-              <label className="text-[12px] text-neutral-600">Currency</label>
-              <select
-                value={trip.settings?.currency || 'JPY'}
-                onChange={(e) => {
-                  const curr = CURRENCIES.find(c => c.code === e.target.value);
-                  if (curr && trip) {
-                    saveTrip({
-                      ...trip,
-                      settings: { currency: curr.code, currencySymbol: curr.symbol },
-                    });
-                  }
-                }}
-                className="px-2.5 py-1.5 bg-neutral-50 border border-neutral-200 rounded-lg text-[12px] text-neutral-900 focus:outline-none focus:border-neutral-400 transition-[border-color] duration-150"
+        <div
+          className="fixed inset-0 z-[10000] flex items-center justify-center p-4"
+          style={{ background: 'rgba(0, 0, 0, 0.3)' }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowSettings(false); }}
+        >
+          <div className="bg-white border border-neutral-200 rounded-[10px] p-6 w-full max-w-sm shadow-lg expand-content">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-[14px] font-semibold text-neutral-900">Settings</p>
+              <button
+                onClick={() => setShowSettings(false)}
+                className="text-neutral-400 hover:text-neutral-900 text-[18px] leading-none transition-colors duration-150"
               >
-                {CURRENCIES.map(c => (
-                  <option key={c.code} value={c.code}>{c.symbol} {c.code} — {c.label}</option>
-                ))}
-              </select>
+                &times;
+              </button>
             </div>
 
-            {/* Trip Title */}
-            <div className="flex items-center justify-between">
-              <label className="text-[12px] text-neutral-600">Trip Title</label>
-              <input
-                type="text"
-                value={trip.title}
-                onChange={(e) => {
-                  if (trip) saveTrip({ ...trip, title: e.target.value });
-                }}
-                className="px-2.5 py-1.5 bg-neutral-50 border border-neutral-200 rounded-lg text-[12px] text-neutral-900 focus:outline-none focus:border-neutral-400 transition-[border-color] duration-150 w-48"
-              />
-            </div>
+            <div className="space-y-3">
+              {/* Currency */}
+              <div>
+                <label className="block text-[10px] uppercase tracking-[1.2px] text-neutral-400 mb-1">Currency</label>
+                <select
+                  value={trip.settings?.currency || 'JPY'}
+                  onChange={(e) => {
+                    const curr = CURRENCIES.find(c => c.code === e.target.value);
+                    if (curr && trip) {
+                      saveTrip({
+                        ...trip,
+                        settings: { currency: curr.code, currencySymbol: curr.symbol },
+                      });
+                    }
+                  }}
+                  className="w-full px-2.5 py-1.5 bg-neutral-50 border border-neutral-200 rounded-lg text-[13px] text-neutral-900 focus:outline-none focus:border-neutral-400 transition-[border-color] duration-150"
+                >
+                  {CURRENCIES.map(c => (
+                    <option key={c.code} value={c.code}>{c.symbol} {c.code} — {c.label}</option>
+                  ))}
+                </select>
+              </div>
 
-            {/* Trip Dates */}
-            <div className="flex items-center justify-between gap-3">
-              <label className="text-[12px] text-neutral-600">Dates</label>
-              <div className="flex items-center gap-2">
+              {/* Trip Title */}
+              <div>
+                <label className="block text-[10px] uppercase tracking-[1.2px] text-neutral-400 mb-1">Trip Title</label>
                 <input
-                  type="date"
-                  value={trip.startDate}
+                  type="text"
+                  value={trip.title}
                   onChange={(e) => {
-                    if (trip) saveTrip({ ...trip, startDate: e.target.value });
+                    if (trip) saveTrip({ ...trip, title: e.target.value });
                   }}
-                  className="px-2.5 py-1.5 bg-neutral-50 border border-neutral-200 rounded-lg text-[12px] text-neutral-900 focus:outline-none focus:border-neutral-400 transition-[border-color] duration-150"
+                  className="w-full px-2.5 py-1.5 bg-neutral-50 border border-neutral-200 rounded-lg text-[13px] text-neutral-900 focus:outline-none focus:border-neutral-400 transition-[border-color] duration-150"
                 />
-                <span className="text-neutral-400 text-[12px]">to</span>
-                <input
-                  type="date"
-                  value={trip.endDate}
-                  onChange={(e) => {
-                    if (trip) saveTrip({ ...trip, endDate: e.target.value });
-                  }}
-                  className="px-2.5 py-1.5 bg-neutral-50 border border-neutral-200 rounded-lg text-[12px] text-neutral-900 focus:outline-none focus:border-neutral-400 transition-[border-color] duration-150"
-                />
+              </div>
+
+              {/* Trip Dates */}
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[10px] uppercase tracking-[1.2px] text-neutral-400 mb-1">Start</label>
+                  <input
+                    type="date"
+                    value={trip.startDate}
+                    onChange={(e) => {
+                      if (trip) saveTrip({ ...trip, startDate: e.target.value });
+                    }}
+                    className="w-full px-2.5 py-1.5 bg-neutral-50 border border-neutral-200 rounded-lg text-[13px] text-neutral-900 focus:outline-none focus:border-neutral-400 transition-[border-color] duration-150"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] uppercase tracking-[1.2px] text-neutral-400 mb-1">End</label>
+                  <input
+                    type="date"
+                    value={trip.endDate}
+                    onChange={(e) => {
+                      if (trip) saveTrip({ ...trip, endDate: e.target.value });
+                    }}
+                    className="w-full px-2.5 py-1.5 bg-neutral-50 border border-neutral-200 rounded-lg text-[13px] text-neutral-900 focus:outline-none focus:border-neutral-400 transition-[border-color] duration-150"
+                  />
+                </div>
               </div>
             </div>
           </div>

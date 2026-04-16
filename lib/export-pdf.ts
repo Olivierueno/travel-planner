@@ -1,5 +1,5 @@
 import type { Stop, TransportSegment } from './types';
-import { TRANSPORT_CONFIG, stopTotal } from './types';
+import { TRANSPORT_CONFIG, stopTotal, stayDuration } from './types';
 
 function fmtDuration(m: number): string {
   if (!m || m <= 0) return '';
@@ -45,7 +45,21 @@ export function generatePrintHTML(
           <div class="stop-info">
             <div class="stop-name">${stop.name}</div>
             <div class="stop-meta">
-              ${stop.date ? fmtDate(stop.date) : ''}${stop.arrivalTime ? `${stop.date ? ' &middot; ' : ''}${stop.arrivalTime} — ${stop.departureTime || ''}` : ''}${stop.durationMinutes > 0 ? ` &middot; ${fmtDuration(stop.durationMinutes)}` : ''}
+              ${(() => {
+                const arrDate = stop.arrivalDate || (stop as any).date || '';
+                const depDate = stop.departureDate || '';
+                const dur = stayDuration(stop);
+                if (!arrDate) return '';
+                if (arrDate === depDate || !depDate) {
+                  const parts = [fmtDate(arrDate)];
+                  if (stop.arrivalTime && stop.departureTime) parts.push(`${stop.arrivalTime} &rarr; ${stop.departureTime}`);
+                  if (dur) parts.push(dur);
+                  return parts.join(' &middot; ');
+                }
+                const parts = [`${fmtDate(arrDate)}${stop.arrivalTime ? ', ' + stop.arrivalTime : ''} &rarr; ${fmtDate(depDate)}${stop.departureTime ? ', ' + stop.departureTime : ''}`];
+                if (dur) parts.push(dur);
+                return parts.join(' &middot; ');
+              })()}
             </div>
           </div>
           ${total > 0 ? `<div class="stop-cost">${currencySymbol}${total.toLocaleString()}</div>` : ''}

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, FormEvent } from 'react';
 import type { Stop, Activity, Accommodation } from '@/lib/types';
-import { stopTotal } from '@/lib/types';
+import { stopTotal, stayDuration } from '@/lib/types';
 
 
 interface StopCardProps {
@@ -26,28 +26,11 @@ interface GeoResult {
   type: string;
 }
 
-function formatDuration(m: number): string {
-  if (m <= 0) return '';
-  if (m >= 60) {
-    const h = Math.floor(m / 60);
-    const r = m % 60;
-    return r > 0 ? `${h}h ${r}m` : `${h}h`;
-  }
-  return `${m}m`;
-}
-
 function formatDate(d: string): string {
   if (!d) return '';
   const dt = new Date(d + 'T00:00:00');
   const mo = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   return `${mo[dt.getMonth()]} ${dt.getDate()}`;
-}
-
-function timeDiffMinutes(arrival: string, departure: string): number {
-  if (!arrival || !departure) return 0;
-  const [aH, aM] = arrival.split(':').map(Number);
-  const [dH, dM] = departure.split(':').map(Number);
-  return dH * 60 + dM - (aH * 60 + aM);
 }
 
 /* --- Compact display (collapsed) --- */
@@ -73,7 +56,6 @@ function CompactDisplay({
 }) {
   const accoms: Accommodation[] = stop.accommodations || [];
   const acts: Activity[] = stop.activities || [];
-  const dur = stop.durationMinutes || 0;
   const cost = stopTotal(stop);
 
   const [addingAccom, setAddingAccom] = useState(false);
@@ -101,11 +83,26 @@ function CompactDisplay({
     setActName(''); setActCost(0); setAddingAct(false);
   }
 
-  const meta = [
-    stop.date ? formatDate(stop.date) : '',
-    stop.arrivalTime ? `${stop.arrivalTime}\u2009\u2014\u2009${stop.departureTime || ''}` : '',
-    dur > 0 ? formatDuration(dur) : '',
-  ].filter(Boolean).join(' \u00B7 ');
+  const arrDate = stop.arrivalDate || (stop as any).date || '';
+  const depDate = stop.departureDate || '';
+  const dur = stayDuration(stop);
+
+  const meta = (() => {
+    if (!arrDate) return '';
+    if (arrDate === depDate || !depDate) {
+      // Same day: "Apr 15 · 09:00 → 17:00 · 8h"
+      const parts = [formatDate(arrDate)];
+      if (stop.arrivalTime && stop.departureTime) parts.push(`${stop.arrivalTime} \u2192 ${stop.departureTime}`);
+      if (dur) parts.push(dur);
+      return parts.join(' \u00B7 ');
+    }
+    // Multi-day: "Apr 15, 14:00 → Apr 18, 09:00 · 2d 19h"
+    const parts = [
+      `${formatDate(arrDate)}${stop.arrivalTime ? ', ' + stop.arrivalTime : ''} \u2192 ${formatDate(depDate)}${stop.departureTime ? ', ' + stop.departureTime : ''}`,
+    ];
+    if (dur) parts.push(dur);
+    return parts.join(' \u00B7 ');
+  })();
 
   const inlineInput = 'flex-1 px-2 py-1 bg-neutral-50 border border-neutral-200 rounded text-[12px] text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:border-neutral-400 transition-[border-color] duration-150';
   const costInput = 'w-20 px-2 py-1 bg-neutral-50 border border-neutral-200 rounded text-[12px] font-data text-neutral-900 focus:outline-none focus:border-neutral-400 transition-[border-color] duration-150';
@@ -248,9 +245,11 @@ function ExpandedForm({
   const [name, setName] = useState(stop?.name || '');
   const [lat, setLat] = useState<number | null>(stop?.lat ?? null);
   const [lng, setLng] = useState<number | null>(stop?.lng ?? null);
-  const [date, setDate] = useState(stop?.date || '');
-  const [arrivalTime, setArrivalTime] = useState(stop?.arrivalTime || '09:00');
-  const [departureTime, setDepartureTime] = useState(stop?.departureTime || '11:00');
+  const [arrivalDate, setArrivalDate] = useState(stop?.arrivalDate || (stop as any)?.date || '');
+  const [arrivalTime, setArrivalTime] = useState(stop?.arrivalTime || '14:00');
+  const [departureDate, setDepartureDate] = useState(stop?.departureDate || stop?.arrivalDate || (stop as any)?.date || '');
+  const [departureTime, setDepartureTime] = useState(stop?.departureTime || '09:00');
+  const [departureDateTouched, setDepartureDateTouched] = useState(!!stop?.departureDate);
   const [costJPY, setCostJPY] = useState(stop?.costJPY || 0);
   const [notes, setNotes] = useState(stop?.notes || '');
 
@@ -339,11 +338,18 @@ function ExpandedForm({
     setActivities(prev => prev.filter(a => a.id !== id));
   }
 
+  function handleArrivalDateChange(value: string) {
+    setArrivalDate(value);
+    if (!departureDateTouched && value) {
+      const next = new Date(value + 'T00:00:00');
+      next.setDate(next.getDate() + 1);
+      setDepartureDate(next.toISOString().split('T')[0]);
+    }
+  }
+
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!name.trim() || lat === null || lng === null) return;
-
-    const duration = timeDiffMinutes(arrivalTime, departureTime);
 
     const result: Stop = {
       id: stop?.id || crypto.randomUUID(),
@@ -351,10 +357,10 @@ function ExpandedForm({
       description: stop?.description || '',
       lat,
       lng,
-      date,
+      arrivalDate,
       arrivalTime,
+      departureDate: departureDate || arrivalDate,
       departureTime,
-      durationMinutes: duration > 0 ? duration : 0,
       costJPY,
       notes,
       accommodations,
@@ -441,21 +447,16 @@ function ExpandedForm({
           />
         </div>
 
-        {/* Date */}
+        {/* Arrive */}
         <div>
-          <label className={labelClass}>Date</label>
-          <input
-            type="date"
-            value={date}
-            onChange={e => setDate(e.target.value)}
-            className={inputClass}
-          />
-        </div>
-
-        {/* Time row */}
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <label className={labelClass}>Arrival</label>
+          <label className={labelClass}>Arrive</label>
+          <div className="grid grid-cols-2 gap-2">
+            <input
+              type="date"
+              value={arrivalDate}
+              onChange={e => handleArrivalDateChange(e.target.value)}
+              className={inputClass}
+            />
             <input
               type="time"
               value={arrivalTime}
@@ -463,8 +464,18 @@ function ExpandedForm({
               className={inputClass}
             />
           </div>
-          <div>
-            <label className={labelClass}>Departure</label>
+        </div>
+
+        {/* Depart */}
+        <div>
+          <label className={labelClass}>Depart</label>
+          <div className="grid grid-cols-2 gap-2">
+            <input
+              type="date"
+              value={departureDate}
+              onChange={e => { setDepartureDate(e.target.value); setDepartureDateTouched(true); }}
+              className={inputClass}
+            />
             <input
               type="time"
               value={departureTime}

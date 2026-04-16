@@ -19,19 +19,19 @@ function buildEmbedUrl(stops: Stop[]): string {
   const base = 'https://www.google.com/maps/embed/v1';
 
   if (stops.length === 0) {
-    return `${base}/view?key=${key}&center=36.5,138&zoom=6`;
+    return `${base}/view?key=${key}&center=36.5,138&zoom=6&maptype=satellite`;
   }
 
   if (stops.length === 1) {
     const s = stops[0];
-    return `${base}/place?key=${key}&q=${s.lat},${s.lng}&zoom=14`;
+    return `${base}/place?key=${key}&q=${s.lat},${s.lng}&zoom=14&maptype=satellite`;
   }
 
   // Directions mode: origin, destination, waypoints
   const origin = `${stops[0].lat},${stops[0].lng}`;
   const destination = `${stops[stops.length - 1].lat},${stops[stops.length - 1].lng}`;
 
-  let url = `${base}/directions?key=${key}&origin=${origin}&destination=${destination}`;
+  let url = `${base}/directions?key=${key}&origin=${origin}&destination=${destination}&maptype=satellite`;
 
   // Waypoints (stops in between first and last)
   if (stops.length > 2) {
