@@ -5,7 +5,6 @@ import type { Stop, TransportSegment } from '@/lib/types';
 import { stopTotal } from '@/lib/types';
 import StopCard from './StopCard';
 import TransportSegmentCard from './TransportSegment';
-import Footer from './Footer';
 
 interface TimelineProps {
   stops: Stop[];
@@ -200,10 +199,6 @@ export default function Timeline({
         </button>
       )}
 
-      {/* Footer */}
-      <div className="mt-8">
-        <Footer />
-      </div>
     </div>
   );
 }

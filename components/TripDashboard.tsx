@@ -6,6 +6,7 @@ import type { Trip, Stop, TransportSegment } from '@/lib/types';
 import { generatePrintHTML } from '@/lib/export-pdf';
 import { CURRENCIES, autoCalculateArrivals } from '@/lib/types';
 import Timeline from './Timeline';
+import Footer from './Footer';
 
 const Map = dynamic(() => import('./MapInner'), {
   ssr: false,
@@ -709,6 +710,7 @@ export default function TripDashboard() {
           />
         </div>
       </div>
+      <Footer />
     </div>
   );
 }
