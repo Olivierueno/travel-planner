@@ -1,6 +1,15 @@
 import type { Stop, TransportSegment } from './types';
 import { TRANSPORT_CONFIG, stopTotal, stayDuration } from './types';
 
+function esc(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function fmtDuration(m: number): string {
   if (!m || m <= 0) return '';
   if (m >= 60) {
@@ -43,7 +52,7 @@ export function generatePrintHTML(
         <div class="stop-header">
           <div class="stop-num">${i + 1}</div>
           <div class="stop-info">
-            <div class="stop-name">${stop.name}</div>
+            <div class="stop-name">${esc(stop.name)}</div>
             <div class="stop-meta">
               ${(() => {
                 const arrDate = stop.arrivalDate || (stop as any).date || '';
@@ -68,7 +77,7 @@ export function generatePrintHTML(
     if (accoms.length > 0) {
       html += `<div class="section"><div class="section-label">Stays</div>`;
       accoms.forEach(a => {
-        html += `<div class="item"><span>${a.name}</span><span class="item-cost">${currencySymbol}${a.costJPY.toLocaleString()}</span></div>`;
+        html += `<div class="item"><span>${esc(a.name)}</span><span class="item-cost">${currencySymbol}${a.costJPY.toLocaleString()}</span></div>`;
       });
       html += `</div>`;
     }
@@ -76,13 +85,13 @@ export function generatePrintHTML(
     if (acts.length > 0) {
       html += `<div class="section"><div class="section-label">Activities</div>`;
       acts.forEach(a => {
-        html += `<div class="item"><span>${a.name}</span><span class="item-cost">${currencySymbol}${a.costJPY.toLocaleString()}</span></div>`;
+        html += `<div class="item"><span>${esc(a.name)}</span><span class="item-cost">${currencySymbol}${a.costJPY.toLocaleString()}</span></div>`;
       });
       html += `</div>`;
     }
 
     if (stop.notes) {
-      html += `<div class="notes">${stop.notes}</div>`;
+      html += `<div class="notes">${esc(stop.notes)}</div>`;
     }
 
     html += `</div>`;
@@ -102,7 +111,7 @@ export function generatePrintHTML(
 <html>
 <head>
 <meta charset="utf-8">
-<title>${title}</title>
+<title>${esc(title)}</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #171717; background: #fff; padding: 40px; max-width: 700px; margin: 0 auto; }
@@ -128,7 +137,7 @@ export function generatePrintHTML(
 </style>
 </head>
 <body>
-  <h1>${title}</h1>
+  <h1>${esc(title)}</h1>
   <div class="subtitle">${dateRange} &middot; ${stops.length} stop${stops.length !== 1 ? 's' : ''}</div>
   <div class="summary">Trip itinerary</div>
   ${stopsHTML}

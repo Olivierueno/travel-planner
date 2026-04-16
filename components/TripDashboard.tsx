@@ -503,7 +503,7 @@ export default function TripDashboard() {
                 type="text"
                 value={createMemberName}
                 onChange={(e) => setCreateMemberName(e.target.value)}
-                placeholder="e.g., Olivier"
+                placeholder="Your name"
                 required
                 className={inputClass}
               />

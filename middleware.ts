@@ -5,9 +5,13 @@ const COOKIE_NAME = 'trip-auth';
 
 export async function middleware(request: NextRequest) {
   const token = request.cookies.get(COOKIE_NAME)?.value;
-  const secret = new TextEncoder().encode(
-    process.env.AUTH_SECRET || 'dev-secret-change-me'
-  );
+
+  const authSecret = process.env.AUTH_SECRET;
+  if (!authSecret) {
+    return NextResponse.json({ error: 'Server misconfigured' }, { status: 500 });
+  }
+  const secret = new TextEncoder().encode(authSecret);
+
   const isApiRoute = request.nextUrl.pathname.startsWith('/api/');
 
   if (!token) {
