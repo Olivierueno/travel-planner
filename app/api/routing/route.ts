@@ -30,7 +30,8 @@ export async function GET(request: NextRequest) {
   try {
     const result = await getRoute(fromLat, fromLng, toLat, toLng, mode);
     return NextResponse.json(result);
-  } catch {
+  } catch (err) {
+    console.error('Routing error:', err instanceof Error ? err.message : err);
     return NextResponse.json({ error: 'Routing failed' }, { status: 502 });
   }
 }
